@@ -1,0 +1,79 @@
+"""fraud-detection-ouest-afrique/backend/policies.yaml
+
+Top-level tenant fraud policies for MVP.
+Each tenantId maps to allowed channels, risk thresholds, and ml model config.
+"""
+version: "v1"
+
+policies:
+
+  - tenantId: "ci-sandbox-01"
+    name: "Côte d'Ivoire Sandbox"
+    country: "CI"
+    environment: "sandbox"
+    channels:
+      allowed:
+        - "mobile_money"
+        - "web"
+      blocked: []
+    thresholds:
+      autoRejectScore: 0.92
+      reviewScore: 0.75
+      maxSingleTransactionAmount:
+        currency: "XOF"
+        amount: 5000000
+    ml:
+      modelId: "lightgbm_v1"
+      featureVersion: "v2025-06"
+      maxLatencyMs: 180
+    routing:
+      topics:
+        ingest: "fd.ingest.ci.sandbox.v1"
+        deadLetter: "fd.dlq.ci.sandbox.v1"
+
+  - tenantId: "sn-sandbox-01"
+    name: "Sénégal Sandbox"
+    country: "SN"
+    environment: "sandbox"
+    channels:
+      allowed:
+        - "mobile_money"
+      blocked: []
+    thresholds:
+      autoRejectScore: 0.92
+      reviewScore: 0.75
+      maxSingleTransactionAmount:
+        currency: "XOF"
+        amount: 4000000
+    ml:
+      modelId: "lightgbm_v1"
+      featureVersion: "v2025-06"
+      maxLatencyMs: 180
+    routing:
+      topics:
+        ingest: "fd.ingest.sn.sandbox.v1"
+        deadLetter: "fd.dlq.sn.sandbox.v1"
+
+  - tenantId: "ci-prod-01"
+    name: "Côte d'Ivoire Production"
+    country: "CI"
+    environment: "production"
+    channels:
+      allowed:
+        - "mobile_money"
+        - "web"
+      blocked: []
+    thresholds:
+      autoRejectScore: 0.88
+      reviewScore: 0.70
+      maxSingleTransactionAmount:
+        currency: "XOF"
+        amount: 7500000
+    ml:
+      modelId: "lightgbm_v1"
+      featureVersion: "v2025-06"
+      maxLatencyMs: 150
+    routing:
+      topics:
+        ingest: "fd.ingest.ci.prod.v1"
+        deadLetter: "fd.dlq.ci.prod.v1"

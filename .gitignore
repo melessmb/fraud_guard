@@ -13,10 +13,9 @@ env/
 dist/
 build/
 
-# Variables d'environnement (SECRETS — ne jamais committer)
-.env
-.env.local
-.env.production
+# Variables d'environnement de production publique uniquement
+# .env inclus car dépôt privé — à exclure si le dépôt devient public
+.env.production.public
 
 # Bases de données locales
 *.db
