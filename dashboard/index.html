@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Fraud Detection Dashboard</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  .row { display: flex; gap: 20px; }
+  .card { flex: 1; padding: 16px; border: 1px solid #ddd; border-radius: 6px; }
+  label { display: block; margin: 8px 0 4px; font-weight: bold; }
+  input, select, button { width: 100%; padding: 8px; margin-bottom: 8px; }
+  pre { background: #f7f7f7; padding: 10px; border-radius: 4px; overflow: auto; }
+</style>
+</head>
+<body>
+<h1>🛡️ Fraud Detection — Dashboard</h1>
+
+<div class="row">
+  <div class="card">
+    <h2>Créer un tenant</h2>
+    <label>Nom</label>
+    <input id="tenant-name" value="Demo CI" />
+    <label>Pays</label>
+    <input id="tenant-country" value="CI" />
+    <label>Environnement</label>
+    <select id="tenant-env">
+      <option value="sandbox">sandbox</option>
+      <option value="production">production</option>
+    </select>
+    <label>API Key</label>
+    <input id="tenant-api-key" value="demo-key-123" />
+    <button onclick="createTenant()">Créer</button>
+    <pre id="tenant-result">—</pre>
+  </div>
+
+  <div class="card">
+    <h2>Tester le score</h2>
+    <label>API Key</label>
+    <input id="score-api-key" value="demo-key-123" />
+    <label>Montant</label>
+    <input id="score-amount" type="number" value="12000000" />
+    <label>Canal</label>
+    <select id="score-channel">
+      <option value="mobile_money">mobile_money</option>
+      <option value="web">web</option>
+      <option value="pos">pos</option>
+    </select>
+    <button onclick="scoreTransaction()">Scorer</button>
+    <pre id="score-result">—</pre>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8780";
+
+async function createTenant() {
+  const payload = {
+    name: document.getElementById("tenant-name").value,
+    country: document.getElementById("tenant-country").value,
+    environment: document.getElementById("tenant-env").value,
+    apiKey: document.getElementById("tenant-api-key").value,
+  };
+  const res = await fetch(`${API}/api/v1/tenants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  document.getElementById("tenant-result").textContent = `${res.status}\n${JSON.stringify(data, null, 2)}`;
+}
+
+async function scoreTransaction() {
+  const payload = {
+    transaction_id: "tx_" + Math.floor(Math.random() * 10000),
+    tenantId: 1,
+    amount: parseFloat(document.getElementById("score-amount").value),
+    currency: "XOF",
+    channel: document.getElementById("score-channel").value,
+    country: "CI",
+    device_fingerprint: "dp_001",
+    ip_address: "102.89.0.1",
+    timestamp: new Date().toISOString(),
+    clientId: "demo",
+  };
+  const headers = { "Content-Type": "application/json" };
+  const apiKey = document.getElementById("score-api-key").value;
+  if (apiKey) headers["X-API-Key"] = apiKey;
+
+  const res = await fetch(`${API}/api/v1/score`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  document.getElementById("score-result").textContent = `${res.status}\n${JSON.stringify(data, null, 2)}`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fraud_ouest_afrique
+    ports:
+      - "5433:5432"   # 5432 déjà utilisé par PostgreSQL local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+    ports:
+      - "8780:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/fraud_ouest_afrique
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=true
+      - SECRET_KEY=dev-secret-key
+      - ADMIN_API_KEY=dev-admin-key-change-in-production
+      - CORS_ORIGINS=*
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
