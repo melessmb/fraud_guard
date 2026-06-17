@@ -1,8 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String
 
 from app.core.database import Base
+
+
+def _data_expires_at() -> datetime:
+    return datetime.utcnow() + timedelta(days=365 * 5)
 
 
 class FraudLog(Base):
@@ -20,3 +24,6 @@ class FraudLog(Base):
     model_version = Column(String(64), nullable=False)
     status = Column(String(32), default="reviewed", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Conformité BCEAO : rétention 5 ans — Instruction n°008-05-2015
+    data_expires_at = Column(DateTime, default=_data_expires_at, nullable=True)
+    is_anonymized = Column(Boolean, default=False, nullable=False)

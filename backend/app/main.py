@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth as auth_api
+from app.api import compliance as compliance_api
 from app.api import fraud as fraud_api
 from app.api import model as model_api
 from app.api import tenants as tenants_api
@@ -82,3 +83,4 @@ app.include_router(fraud_api.router, prefix="/api/v1", tags=["scoring"])
 app.include_router(tenants_api.router, prefix="/api/v1", tags=["tenants"])
 app.include_router(auth_api.router, prefix="/api/v1", tags=["auth"])
 app.include_router(model_api.router, prefix="/api/v1", tags=["model"])
+app.include_router(compliance_api.router, prefix="/api/v1", tags=["compliance"])

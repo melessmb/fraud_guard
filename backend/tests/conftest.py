@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base, get_db
 from app.core.security import hash_api_key
 from app.main import app
+from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.fraud_log import FraudLog  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
 from app.models.tenant_policy import TenantPolicy  # noqa: F401

@@ -2,8 +2,11 @@ from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
+from app.core.audit import log_audit
+from app.core.database import get_db
 from app.models.schemas import ModelVersionResponse
 
 router = APIRouter()
@@ -35,13 +38,22 @@ def list_model_versions() -> List[ModelVersionResponse]:
     "/model/versions/{version}/promote",
     dependencies=[Depends(require_admin)],
 )
-def promote_model_version(version: str) -> dict:
+def promote_model_version(version: str, db: Session = Depends(get_db)) -> dict:
     if version not in _REGISTRY:
         raise HTTPException(status_code=404, detail=f"Version '{version}' introuvable")
 
+    previous = next((v["version"] for v in _REGISTRY.values() if v["stage"] == "production"), None)
     for v in _REGISTRY.values():
         if v["stage"] == "production":
             v["stage"] = "staging"
 
     _REGISTRY[version]["stage"] = "production"
+    log_audit(
+        db,
+        action_type="PROMOTE_MODEL",
+        actor_type="admin",
+        resource_type="model",
+        resource_id=version,
+        details={"previous_production": previous},
+    )
     return {"version": version, "stage": "production", "status": "promoted"}

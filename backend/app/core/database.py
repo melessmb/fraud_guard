@@ -27,6 +27,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
+    import app.models.audit_log  # noqa: F401
     import app.models.fraud_log  # noqa: F401
     import app.models.tenant  # noqa: F401
     import app.models.tenant_policy  # noqa: F401

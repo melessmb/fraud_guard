@@ -87,6 +87,12 @@ uvicorn app.main:app --reload --port 8780
 | `GET` | `/api/v1/tenants/{id}/alerts` | Alertes de fraude |
 | `POST` | `/api/v1/tenants/{id}/policies` | Configurer les seuils (admin) |
 | `GET` | `/api/v1/model/versions` | Versions du modèle ML |
+| `GET` | `/api/v1/compliance/audit-log` | Journal d'audit (admin) |
+| `GET` | `/api/v1/compliance/report` | Rapport BCEAO (admin) |
+| `GET` | `/api/v1/compliance/transactions/{id}/explanation` | Droit à l'explication |
+| `POST` | `/api/v1/compliance/anonymize/{id}` | Pseudonymiser une transaction (admin) |
+| `GET` | `/api/v1/compliance/retention-stats` | Stats rétention BCEAO (admin) |
+| `DELETE` | `/api/v1/compliance/expired` | Purger les données expirées (admin) |
 
 ## Sécurité
 
@@ -102,7 +108,7 @@ uvicorn app.main:app --reload --port 8780
 ```bash
 cd backend
 pytest tests/ -v
-# 37 tests · 100% pass
+# 53 tests · 100% pass
 ```
 
 ## Modèle ML

@@ -112,3 +112,17 @@ class ModelVersionResponse(BaseModel):
     created_at: datetime
     auc_roc: Optional[float] = None
     description: str = ""
+
+
+class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    timestamp: datetime
+    action_type: str
+    actor_type: str
+    actor_id: Optional[str] = None
+    resource_type: Optional[str] = None
+    resource_id: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    outcome: str

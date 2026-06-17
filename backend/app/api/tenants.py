@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
+from app.core.audit import log_audit
 from app.core.database import get_db
 from app.core.security import hash_api_key
 from app.models.fraud_log import FraudLog
@@ -38,6 +39,14 @@ def create_tenant(payload: TenantRequest, db: Session = Depends(get_db)) -> dict
     )
     db.add(tenant)
     db.flush()
+    log_audit(
+        db,
+        action_type="CREATE_TENANT",
+        actor_type="admin",
+        resource_type="tenant",
+        resource_id=str(tenant.id),
+        details={"name": payload.name, "country": payload.country, "environment": payload.environment},
+    )
     return {"id": tenant.id, "status": "created"}
 
 
@@ -96,6 +105,14 @@ def update_policy(
             model_id=policy.model_id,
         ))
     db.flush()
+    log_audit(
+        db,
+        action_type="UPDATE_POLICY",
+        actor_type="admin",
+        resource_type="policy",
+        resource_id=str(tenant_id),
+        details={"score_threshold": policy.score_threshold, "model_id": policy.model_id},
+    )
     return policy
 
 
@@ -208,6 +225,14 @@ def configure_webhook(
             secret=config.secret,
         ))
     db.flush()
+    log_audit(
+        db,
+        action_type="CONFIGURE_WEBHOOK",
+        actor_type="admin",
+        resource_type="webhook",
+        resource_id=str(tenant_id),
+        details={"url": config.url, "events": config.events},
+    )
     return {"status": "configured", "tenant_id": tenant_id, "url": config.url}
 
 
