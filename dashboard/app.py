@@ -376,12 +376,12 @@ if "Dashboard" in page:
     fig_area.add_trace(go.Scatter(
         x=date_strs, y=leg_vals, name="Légitimes",
         mode="lines", line=dict(color=GREEN, width=2),
-        fill="tozeroy", fillcolor=f"{GREEN}18",
+        fill="tozeroy", fillcolor=_to_rgba(GREEN, 0.09),
     ))
     fig_area.add_trace(go.Scatter(
         x=date_strs, y=fraud_vals, name="Fraudes",
         mode="lines", line=dict(color=RED, width=1.5),
-        fill="tozeroy", fillcolor=f"{RED}12",
+        fill="tozeroy", fillcolor=_to_rgba(RED, 0.07),
     ))
     fig_area.update_layout(
         height=220, margin=dict(l=0, r=0, t=10, b=0),
