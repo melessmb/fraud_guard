@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Any, Optional
+import os
 import random
 
 import pandas as pd
@@ -146,7 +147,7 @@ html, body, [data-testid="stApp"] {{
 
 # ── Session state defaults ────────────────────────────────────────────────────
 _D = {
-    "api_url":    "http://localhost:8780",
+    "api_url":    os.getenv("API_URL", "http://localhost:8780"),
     "admin_key":  "",
     "tenant_key": "",
     "tenant_id":  1,
@@ -213,12 +214,20 @@ def risk_label(s: float) -> str:
     return "Faible" if s < 0.5 else ("Moyen" if s < 0.7 else "Élevé")
 
 # ── Sparkline helper ──────────────────────────────────────────────────────────
+def _to_rgba(color: str, alpha: float = 0.08) -> str:
+    if "rgb" in color:
+        return color.replace(")", f",{alpha})").replace("rgb(", "rgba(")
+    h = color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def sparkline_fig(values: list[float], color: str) -> go.Figure:
     fig = go.Figure(go.Scatter(
         y=values, mode="lines",
         line=dict(color=color, width=1.8),
         fill="tozeroy",
-        fillcolor=color.replace(")", ",0.08)").replace("rgb", "rgba") if "rgb" in color else f"{color}14",
+        fillcolor=_to_rgba(color),
     ))
     fig.update_layout(
         height=40, margin=dict(l=0, r=0, t=0, b=0),

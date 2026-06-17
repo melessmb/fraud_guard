@@ -44,5 +44,16 @@ services:
       redis:
         condition: service_healthy
 
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
