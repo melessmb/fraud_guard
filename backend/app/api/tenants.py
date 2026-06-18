@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.core.admin_auth import require_admin
 from app.core.audit import log_audit
 from app.core.database import get_db
-from app.core.security import hash_api_key
 from app.models.fraud_log import FraudLog
 from app.models.schemas import (
     AlertResponse,
@@ -17,6 +16,7 @@ from app.models.schemas import (
     PolicyConfig,
     TenantRequest,
     TenantResponse,
+    TenantUpdateRequest,
     WebhookConfig,
 )
 from app.models.tenant import Tenant
@@ -26,16 +26,19 @@ from app.models.tenant_webhook import TenantWebhook
 router = APIRouter()
 
 
+# ── CRUD tenants ──────────────────────────────────────────────────────────────
+
 @router.post("/tenants", status_code=201, dependencies=[Depends(require_admin)])
 def create_tenant(payload: TenantRequest, db: Session = Depends(get_db)) -> dict:
-    hashed = hash_api_key(payload.api_key)
-    if db.query(Tenant).filter(Tenant.api_key == hashed).first():
-        raise HTTPException(status_code=409, detail="Cette clé API existe déjà")
+    if payload.keycloak_id:
+        existing = db.query(Tenant).filter(Tenant.keycloak_id == payload.keycloak_id).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Ce Keycloak ID est déjà associé à un tenant")
     tenant = Tenant(
         name=payload.name,
         country=payload.country,
         environment=payload.environment,
-        api_key=hashed,
+        keycloak_id=payload.keycloak_id,
     )
     db.add(tenant)
     db.flush()
@@ -52,9 +55,58 @@ def create_tenant(payload: TenantRequest, db: Session = Depends(get_db)) -> dict
 
 @router.get("/tenants", response_model=List[TenantResponse], dependencies=[Depends(require_admin)])
 def list_tenants(db: Session = Depends(get_db)) -> List[TenantResponse]:
-    rows = db.query(Tenant).all()
-    return [TenantResponse.model_validate(row) for row in rows]
+    return [TenantResponse.model_validate(t) for t in db.query(Tenant).all()]
 
+
+@router.get("/tenants/{tenant_id}", response_model=TenantResponse, dependencies=[Depends(require_admin)])
+def get_tenant(tenant_id: int, db: Session = Depends(get_db)) -> TenantResponse:
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    return TenantResponse.model_validate(t)
+
+
+@router.put("/tenants/{tenant_id}", response_model=TenantResponse, dependencies=[Depends(require_admin)])
+def update_tenant(tenant_id: int, payload: TenantUpdateRequest, db: Session = Depends(get_db)) -> TenantResponse:
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    if payload.keycloak_id and payload.keycloak_id != t.keycloak_id:
+        conflict = db.query(Tenant).filter(Tenant.keycloak_id == payload.keycloak_id).first()
+        if conflict:
+            raise HTTPException(status_code=409, detail="Ce Keycloak ID est déjà utilisé")
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(t, field, value)
+    db.flush()
+    log_audit(
+        db,
+        action_type="UPDATE_TENANT",
+        actor_type="admin",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        details=payload.model_dump(exclude_none=True),
+    )
+    return TenantResponse.model_validate(t)
+
+
+@router.delete("/tenants/{tenant_id}", status_code=204, dependencies=[Depends(require_admin)])
+def delete_tenant(tenant_id: int, db: Session = Depends(get_db)) -> None:
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    db.delete(t)
+    db.flush()
+    log_audit(
+        db,
+        action_type="DELETE_TENANT",
+        actor_type="admin",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        details={"name": t.name},
+    )
+
+
+# ── Policies ──────────────────────────────────────────────────────────────────
 
 @router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig)
 def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
@@ -74,92 +126,33 @@ def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
     )
 
 
-@router.post(
-    "/tenants/{tenant_id}/policies",
-    response_model=PolicyConfig,
-    dependencies=[Depends(require_admin)],
-)
-def update_policy(
-    tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)
-) -> PolicyConfig:
+@router.post("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_admin)])
+def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)) -> PolicyConfig:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     row = db.query(TenantPolicy).filter(TenantPolicy.tenant_id == tenant_id).first()
     if row:
-        row.score_threshold = policy.score_threshold
-        row.auto_reject_threshold = policy.auto_reject_threshold
-        row.max_amount_xof = policy.max_amount_xof
-        row.max_amount_usd = policy.max_amount_usd
-        row.allowed_channels = policy.allowed_channels
-        row.blocked_channels = policy.blocked_channels
-        row.model_id = policy.model_id
+        for f, v in policy.model_dump().items():
+            setattr(row, f, v)
     else:
-        db.add(TenantPolicy(
-            tenant_id=tenant_id,
-            score_threshold=policy.score_threshold,
-            auto_reject_threshold=policy.auto_reject_threshold,
-            max_amount_xof=policy.max_amount_xof,
-            max_amount_usd=policy.max_amount_usd,
-            allowed_channels=policy.allowed_channels,
-            blocked_channels=policy.blocked_channels,
-            model_id=policy.model_id,
-        ))
+        db.add(TenantPolicy(tenant_id=tenant_id, **policy.model_dump()))
     db.flush()
-    log_audit(
-        db,
-        action_type="UPDATE_POLICY",
-        actor_type="admin",
-        resource_type="policy",
-        resource_id=str(tenant_id),
-        details={"score_threshold": policy.score_threshold, "model_id": policy.model_id},
-    )
+    log_audit(db, action_type="UPDATE_POLICY", actor_type="admin",
+              resource_type="policy", resource_id=str(tenant_id),
+              details={"score_threshold": policy.score_threshold, "model_id": policy.model_id})
     return policy
 
 
-@router.post("/tenants/{tenant_id}/events", response_model=List[FraudScoreResponse])
-async def batch_score(
-    tenant_id: int, batch: BatchEventRequest, db: Session = Depends(get_db)
-) -> List[FraudScoreResponse]:
-    from app.services.evaluation import score_transaction
-
-    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
-        raise HTTPException(status_code=404, detail="Tenant introuvable")
-
-    results: List[FraudScoreResponse] = []
-    for event in batch.events:
-        result = await score_transaction(event)
-        db.add(FraudLog(
-            transaction_id=event.transaction_id,
-            tenant_id=tenant_id,
-            amount=event.amount,
-            currency=event.currency,
-            channel=event.channel,
-            country=event.country,
-            score=result.score,
-            is_fraud=result.is_fraud,
-            model_version=result.model_version,
-        ))
-        results.append(result)
-    db.flush()
-    return results
-
+# ── Metrics & Alerts ──────────────────────────────────────────────────────────
 
 @router.get("/tenants/{tenant_id}/metrics", response_model=MetricsResponse)
-def get_tenant_metrics(
-    tenant_id: int, hours: int = 24, db: Session = Depends(get_db)
-) -> MetricsResponse:
+def get_tenant_metrics(tenant_id: int, hours: int = 24, db: Session = Depends(get_db)) -> MetricsResponse:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
-
     since = datetime.utcnow() - timedelta(hours=hours)
-    logs = (
-        db.query(FraudLog)
-        .filter(FraudLog.tenant_id == tenant_id, FraudLog.created_at >= since)
-        .all()
-    )
-    total = len(logs)
-    fraud_count = sum(1 for log in logs if log.is_fraud)
-
+    logs  = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id, FraudLog.created_at >= since).all()
+    total       = len(logs)
+    fraud_count = sum(1 for l in logs if l.is_fraud)
     return MetricsResponse(
         period_start=since,
         period_end=datetime.utcnow(),
@@ -173,12 +166,9 @@ def get_tenant_metrics(
 
 
 @router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse])
-def get_alerts(
-    tenant_id: int, limit: int = 50, db: Session = Depends(get_db)
-) -> List[AlertResponse]:
+def get_alerts(tenant_id: int, limit: int = 50, db: Session = Depends(get_db)) -> List[AlertResponse]:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
-
     logs = (
         db.query(FraudLog)
         .filter(FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True))
@@ -186,54 +176,60 @@ def get_alerts(
         .limit(limit)
         .all()
     )
-    return [
-        AlertResponse(
-            id=log.id,
-            transaction_id=log.transaction_id,
-            tenant_id=log.tenant_id,
-            score=log.score,
-            channel=log.channel,
-            amount=log.amount,
-            currency=log.currency,
-            timestamp=log.created_at,
-            status=log.status,
-        )
-        for log in logs
-    ]
+    return [AlertResponse(
+        id=l.id, transaction_id=l.transaction_id, tenant_id=l.tenant_id,
+        score=l.score, channel=l.channel, amount=l.amount, currency=l.currency,
+        timestamp=l.created_at, status=l.status,
+    ) for l in logs]
 
 
-@router.post(
-    "/tenants/{tenant_id}/webhooks",
-    status_code=201,
-    dependencies=[Depends(require_admin)],
-)
-def configure_webhook(
-    tenant_id: int, config: WebhookConfig, db: Session = Depends(get_db)
-) -> dict:
+# ── Webhooks ──────────────────────────────────────────────────────────────────
+
+@router.get("/tenants/{tenant_id}/webhooks", dependencies=[Depends(require_admin)])
+def get_webhook(tenant_id: int, db: Session = Depends(get_db)) -> dict:
+    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    row = db.query(TenantWebhook).filter(TenantWebhook.tenant_id == tenant_id).first()
+    if not row:
+        return {"configured": False}
+    return {"configured": True, "url": row.url, "events": row.events}
+
+
+@router.post("/tenants/{tenant_id}/webhooks", status_code=201, dependencies=[Depends(require_admin)])
+def configure_webhook(tenant_id: int, config: WebhookConfig, db: Session = Depends(get_db)) -> dict:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     row = db.query(TenantWebhook).filter(TenantWebhook.tenant_id == tenant_id).first()
     if row:
-        row.url = config.url
-        row.events = config.events
-        row.secret = config.secret
+        row.url, row.events, row.secret = config.url, config.events, config.secret
     else:
-        db.add(TenantWebhook(
-            tenant_id=tenant_id,
-            url=config.url,
-            events=config.events,
-            secret=config.secret,
-        ))
+        db.add(TenantWebhook(tenant_id=tenant_id, url=config.url, events=config.events, secret=config.secret))
     db.flush()
-    log_audit(
-        db,
-        action_type="CONFIGURE_WEBHOOK",
-        actor_type="admin",
-        resource_type="webhook",
-        resource_id=str(tenant_id),
-        details={"url": config.url, "events": config.events},
-    )
+    log_audit(db, action_type="CONFIGURE_WEBHOOK", actor_type="admin",
+              resource_type="webhook", resource_id=str(tenant_id),
+              details={"url": config.url, "events": config.events})
     return {"status": "configured", "tenant_id": tenant_id, "url": config.url}
+
+
+# ── Batch score ───────────────────────────────────────────────────────────────
+
+@router.post("/tenants/{tenant_id}/events", response_model=List[FraudScoreResponse])
+async def batch_score(tenant_id: int, batch: BatchEventRequest, db: Session = Depends(get_db)) -> List[FraudScoreResponse]:
+    from app.services.evaluation import score_transaction
+    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    results: List[FraudScoreResponse] = []
+    for event in batch.events:
+        result = await score_transaction(event)
+        db.add(FraudLog(
+            transaction_id=event.transaction_id, tenant_id=tenant_id,
+            amount=event.amount, currency=event.currency, channel=event.channel,
+            country=event.country, score=result.score, is_fraud=result.is_fraud,
+            model_version=result.model_version,
+        ))
+        results.append(result)
+    db.flush()
+    return results
 
 
 @router.get("/metrics", response_model=MetricsResponse, include_in_schema=False)

@@ -1,24 +1,40 @@
-from fastapi import Depends, HTTPException, Security
-from fastapi.security import APIKeyHeader
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import hash_api_key
+from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
 from app.models.tenant import Tenant
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def get_current_tenant(
-    api_key: str | None = Security(api_key_header),
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> Tenant:
-    if not api_key:
-        raise HTTPException(status_code=401, detail="Clé API manquante")
+    """Résout le tenant courant depuis un token Keycloak valide.
 
-    hashed = hash_api_key(api_key)
-    tenant = db.query(Tenant).filter(Tenant.api_key == hashed).first()
+    Le token doit contenir le rôle realm 'tenant' ou 'admin'.
+    Le tenant est identifié par le claim 'sub' (Keycloak user UUID).
+    """
+    payload = decode_keycloak_token(token)
+
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
+    if "tenant" not in roles and "admin" not in roles:
+        raise HTTPException(status_code=403, detail="Rôle 'tenant' requis")
+
+    keycloak_id: str = payload.get("sub", "")
+    tenant = db.query(Tenant).filter(Tenant.keycloak_id == keycloak_id).first()
+
     if not tenant:
-        raise HTTPException(status_code=401, detail="Clé API invalide")
+        # Fallback : cherche par preferred_username pour les comptes créés avant Keycloak
+        username: str = payload.get("preferred_username", "")
+        tenant = db.query(Tenant).filter(Tenant.name == username).first()
 
+    if not tenant:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Aucun tenant associé à ce compte Keycloak. "
+                "Demandez à un administrateur de lier votre compte."
+            ),
+        )
     return tenant

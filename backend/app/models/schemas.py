@@ -8,7 +8,14 @@ class TenantRequest(BaseModel):
     name: str
     country: str
     environment: str
-    api_key: str
+    keycloak_id: Optional[str] = None
+
+
+class TenantUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    country: Optional[str] = None
+    environment: Optional[str] = None
+    keycloak_id: Optional[str] = None
 
 
 class TenantResponse(BaseModel):
@@ -18,6 +25,7 @@ class TenantResponse(BaseModel):
     name: str
     country: str
     environment: str
+    keycloak_id: Optional[str] = None
     created_at: datetime
 
 
@@ -56,6 +64,19 @@ class FraudScoreResponse(BaseModel):
     is_fraud: bool
     model_version: str
     explanations: Optional[Dict[str, Any]] = None
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    client_id: str = "fraudguard-dashboard"
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    refresh_token: Optional[str] = None
 
 
 class TokenRequest(BaseModel):

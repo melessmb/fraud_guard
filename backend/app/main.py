@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 
 from app.api import auth as auth_api
 from app.api import compliance as compliance_api
@@ -54,10 +56,23 @@ app = FastAPI(
     title=settings.app_name,
     description="API de detection de fraude temps reel — Cote d'Ivoire & Senegal",
     version="1.0.0",
-    docs_url=_docs_url,
-    redoc_url=_redoc_url,
+    docs_url=None,
+    redoc_url=None,
     lifespan=lifespan,
 )
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui() -> HTMLResponse:
+    if not settings.debug:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title=settings.app_name + " - Swagger UI",
+        swagger_js_url="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css",
+    )
 
 # CORS : wildcard uniquement en debug, liste blanche en production
 _origins = (

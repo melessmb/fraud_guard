@@ -25,6 +25,46 @@ services:
       timeout: 3s
       retries: 5
 
+  keycloak-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    volumes:
+      - ../keycloak:/opt/keycloak/data/import
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
   api:
     build:
       context: ../..
@@ -36,12 +76,15 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=true
       - SECRET_KEY=dev-secret-key
-      - ADMIN_API_KEY=dev-admin-key-change-in-production
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=fraudguard
       - CORS_ORIGINS=*
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
 
   dashboard:
@@ -52,8 +95,13 @@ services:
       - "8501:8501"
     environment:
       - API_URL=http://api:8000
+      - KEYCLOAK_URL=http://localhost:8080
+      - KEYCLOAK_REALM=fraudguard
+      - KEYCLOAK_CLIENT_ID=fraudguard-dashboard
     depends_on:
       - api
+      - keycloak
 
 volumes:
   postgres_data:
+  keycloak_data:

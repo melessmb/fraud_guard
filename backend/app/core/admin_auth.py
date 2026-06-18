@@ -1,17 +1,15 @@
-import hmac as _hmac
+from fastapi import Depends, HTTPException
 
-from fastapi import HTTPException, Security
-from fastapi.security import APIKeyHeader
-
-from app.core.config import settings
-
-_admin_header = APIKeyHeader(name="X-Admin-Key", auto_error=False)
+from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
 
 
-def require_admin(admin_key: str | None = Security(_admin_header)) -> None:
-    """Dépendance FastAPI — bloque les endpoints d'administration si la clé est absente ou fausse."""
-    if not admin_key:
-        raise HTTPException(status_code=403, detail="Accès administrateur requis (X-Admin-Key)")
-    # compare_digest() est résistant aux attaques par timing (pas de court-circuit sur premier octet différent)
-    if not _hmac.compare_digest(admin_key.encode(), settings.admin_api_key.encode()):
-        raise HTTPException(status_code=403, detail="Accès administrateur requis (X-Admin-Key)")
+def require_admin(token: str = Depends(oauth2_scheme)) -> dict:
+    """Dépendance FastAPI — vérifie le rôle realm 'admin' dans le token Keycloak."""
+    payload = decode_keycloak_token(token)
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
+    if "admin" not in roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès administrateur requis (rôle 'admin' Keycloak)",
+        )
+    return payload

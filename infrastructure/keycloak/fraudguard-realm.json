@@ -1,0 +1,106 @@
+{
+  "realm": "fraudguard",
+  "displayName": "FraudGuard",
+  "enabled": true,
+  "accessTokenLifespan": 3600,
+  "refreshTokenMaxReuse": 0,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrateur de la plateforme FraudGuard (équipe interne)"
+      },
+      {
+        "name": "tenant_admin",
+        "description": "Administrateur d'une entreprise cliente (banque, opérateur mobile money)"
+      },
+      {
+        "name": "compliance",
+        "description": "Équipe conformité d'une entreprise cliente — alertes et rapports BCEAO"
+      },
+      {
+        "name": "tenant",
+        "description": "Système technique d'une entreprise cliente — accès API scoring uniquement"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fraudguard-api",
+      "name": "FraudGuard API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "fraudguard-dashboard",
+      "name": "Dashboard Admin",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:8501/*",
+        "http://127.0.0.1:8501/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8501",
+        "http://127.0.0.1:8501"
+      ]
+    },
+    {
+      "clientId": "fraudguard-tenants",
+      "name": "FraudGuard Tenants (M2M)",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "tenant-client-secret-change-in-prod",
+      "redirectUris": ["*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "fraudguard-admin",
+      "enabled": true,
+      "email": "admin@fraudguard.local",
+      "firstName": "Admin",
+      "lastName": "FraudGuard",
+      "credentials": [{"type": "password", "value": "Admin1234!", "temporary": false}],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "tenant-admin-demo",
+      "enabled": true,
+      "email": "tenant-admin@fraudguard.local",
+      "firstName": "Tenant",
+      "lastName": "Admin Demo",
+      "credentials": [{"type": "password", "value": "TenantAdmin1234!", "temporary": false}],
+      "realmRoles": ["tenant_admin"]
+    },
+    {
+      "username": "compliance-demo",
+      "enabled": true,
+      "email": "compliance@fraudguard.local",
+      "firstName": "Compliance",
+      "lastName": "Demo",
+      "credentials": [{"type": "password", "value": "Compliance1234!", "temporary": false}],
+      "realmRoles": ["compliance"]
+    },
+    {
+      "username": "tenant-demo",
+      "enabled": true,
+      "email": "tenant-demo@fraudguard.local",
+      "firstName": "Tenant",
+      "lastName": "Demo",
+      "credentials": [{"type": "password", "value": "Tenant1234!", "temporary": false}],
+      "realmRoles": ["tenant"]
+    }
+  ]
+}

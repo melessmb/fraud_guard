@@ -9,12 +9,12 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
-    # Security
+    # Security (conservé pour compatibilité hash API keys existantes)
     secret_key: str = "CHANGE_ME"
-    access_token_expire_minutes: int = 60
 
-    # Admin — clé séparée pour les opérations de gestion de la plateforme
-    admin_api_key: str = "CHANGE_ADMIN_KEY"
+    # Keycloak — IdP centralisé (remplace admin_api_key + JWT internes)
+    keycloak_url: str = "http://localhost:8080"
+    keycloak_realm: str = "fraudguard"
 
     # CORS — liste de domaines séparés par virgule ; "*" uniquement en debug
     cors_origins: str = "*"
