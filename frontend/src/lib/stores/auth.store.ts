@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type UserRole = "admin" | "tenant_admin" | "compliance" | "tenant";
 
@@ -18,23 +19,31 @@ interface AuthState {
   primaryRole: () => UserRole | null;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
 
-  setUser: (user) => set({ user, isAuthenticated: true }),
-  clearUser: () => set({ user: null, isAuthenticated: false }),
+      setUser: (user) => set({ user, isAuthenticated: true }),
+      clearUser: () => set({ user: null, isAuthenticated: false }),
 
-  hasRole: (...roles) => {
-    const { user } = get();
-    if (!user) return false;
-    return roles.some((r) => user.roles.includes(r));
-  },
+      hasRole: (...roles) => {
+        const { user } = get();
+        if (!user) return false;
+        return roles.some((r) => user.roles.includes(r));
+      },
 
-  primaryRole: () => {
-    const { user } = get();
-    if (!user) return null;
-    const order: UserRole[] = ["admin", "tenant_admin", "compliance", "tenant"];
-    return order.find((r) => user.roles.includes(r)) ?? null;
-  },
-}));
+      primaryRole: () => {
+        const { user } = get();
+        if (!user) return null;
+        const order: UserRole[] = ["admin", "tenant_admin", "compliance", "tenant"];
+        return order.find((r) => user.roles.includes(r)) ?? null;
+      },
+    }),
+    {
+      name: "fg-auth",
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+    }
+  )
+);

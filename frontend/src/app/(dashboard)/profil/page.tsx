@@ -34,7 +34,12 @@ export default function ProfilPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (!user) return null;
+  if (!user) return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <Topbar title="Profil" />
+      <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Chargement...</div>
+    </div>
+  );
 
   const initials = user.username.slice(0, 2).toUpperCase();
 
