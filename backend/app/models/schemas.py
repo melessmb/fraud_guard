@@ -157,11 +157,27 @@ class AlertResponse(BaseModel):
     transaction_id: str
     tenant_id: int
     score: float
+    risk_level: str
     channel: str
+    country: str
     amount: float
     currency: str
+    model_version: str
     timestamp: datetime
+    status: str  # open | under_review | validated | rejected
+
+
+class AlertStatusUpdate(BaseModel):
     status: str
+    comment: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, v: str) -> str:
+        allowed = {"open", "under_review", "validated", "rejected"}
+        if v not in allowed:
+            raise ValueError(f"Statut invalide. Valeurs acceptées : {allowed}")
+        return v
 
 
 class TransactionResponse(BaseModel):

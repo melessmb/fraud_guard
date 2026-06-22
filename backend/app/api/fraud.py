@@ -44,6 +44,7 @@ async def score_transaction_endpoint(
         score=result.score,
         is_fraud=result.is_fraud,
         model_version=result.model_version,
+        status="open" if result.is_fraud else "reviewed",
     ))
     db.commit()
     return result

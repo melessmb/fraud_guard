@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models.fraud_log import FraudLog
 from app.models.schemas import (
     AlertResponse,
+    AlertStatusUpdate,
     BatchEventRequest,
     FraudScoreResponse,
     MetricsResponse,
@@ -168,22 +169,70 @@ def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=1
     )
 
 
+def _to_alert_response(l: FraudLog) -> AlertResponse:
+    score = l.score
+    if score >= 0.8:   risk = "critical"
+    elif score >= 0.5: risk = "high"
+    elif score >= 0.3: risk = "medium"
+    else:              risk = "low"
+    return AlertResponse(
+        id=l.id, transaction_id=l.transaction_id, tenant_id=l.tenant_id,
+        score=score, risk_level=risk, channel=l.channel, country=l.country,
+        amount=l.amount, currency=l.currency, model_version=l.model_version,
+        timestamp=l.created_at, status=l.status,
+    )
+
+
 @router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse], dependencies=[Depends(require_admin)])
-def get_alerts(tenant_id: int, limit: int = Query(default=50, ge=1, le=500), db: Session = Depends(get_db)) -> List[AlertResponse]:
+def get_alerts(
+    tenant_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    status: Optional[str] = Query(default=None, description="open | under_review | validated | rejected"),
+    db: Session = Depends(get_db),
+) -> List[AlertResponse]:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
-    logs = (
-        db.query(FraudLog)
-        .filter(FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True))
-        .order_by(FraudLog.created_at.desc())
-        .limit(limit)
-        .all()
+    q = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True))
+    if status:
+        q = q.filter(FraudLog.status == status)
+    logs = q.order_by(FraudLog.created_at.desc()).limit(limit).all()
+    return [_to_alert_response(l) for l in logs]
+
+
+@router.get("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_admin)])
+def get_alert(tenant_id: int, alert_id: int, db: Session = Depends(get_db)) -> AlertResponse:
+    row = db.query(FraudLog).filter(
+        FraudLog.id == alert_id, FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True)
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Alerte introuvable")
+    return _to_alert_response(row)
+
+
+@router.patch("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_admin)])
+def update_alert_status(
+    tenant_id: int,
+    alert_id: int,
+    body: AlertStatusUpdate,
+    db: Session = Depends(get_db),
+    token: dict = Depends(require_admin),
+) -> AlertResponse:
+    row = db.query(FraudLog).filter(
+        FraudLog.id == alert_id, FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True)
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Alerte introuvable")
+    old_status = row.status
+    row.status = body.status
+    log_audit(
+        db, action_type="ALERT_STATUS_UPDATE", actor_type="user",
+        actor_id=token.get("sub"), resource_type="alert", resource_id=str(alert_id),
+        tenant_id=tenant_id,
+        details={"from": old_status, "to": body.status, "comment": body.comment},
     )
-    return [AlertResponse(
-        id=l.id, transaction_id=l.transaction_id, tenant_id=l.tenant_id,
-        score=l.score, channel=l.channel, amount=l.amount, currency=l.currency,
-        timestamp=l.created_at, status=l.status,
-    ) for l in logs]
+    db.commit()
+    db.refresh(row)
+    return _to_alert_response(row)
 
 
 # ── Webhooks ──────────────────────────────────────────────────────────────────
