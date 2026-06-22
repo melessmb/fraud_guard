@@ -4,7 +4,7 @@ import { Bell, Sun, Moon, Globe, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import { useTranslations } from "next-intl";
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,7 +23,7 @@ const ROLE_COLORS: Record<string, string> = {
 export function Topbar({ title, subtitle }: TopbarProps) {
   const { user, primaryRole, clearUser } = useAuthStore();
   const { theme, setTheme, locale, setLocale } = useAppStore();
-  const t = useTranslations("auth");
+  
   const router = useRouter();
   const role = primaryRole();
 
@@ -107,7 +107,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
           size="icon"
           onClick={handleLogout}
           className="text-muted-foreground hover:text-destructive"
-          title={t("logout")}
+          title="Déconnexion"
         >
           <LogOut className="w-4 h-4" />
         </Button>
