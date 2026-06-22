@@ -12,8 +12,9 @@ export interface UserInfo {
 
 interface AuthState {
   user: UserInfo | null;
+  token: string | null;
   isAuthenticated: boolean;
-  setUser: (user: UserInfo) => void;
+  setUser: (user: UserInfo, token: string) => void;
   clearUser: () => void;
   hasRole: (...roles: UserRole[]) => boolean;
   primaryRole: () => UserRole | null;
@@ -23,10 +24,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
 
-      setUser: (user) => set({ user, isAuthenticated: true }),
-      clearUser: () => set({ user: null, isAuthenticated: false }),
+      setUser: (user, token) => set({ user, token, isAuthenticated: true }),
+      clearUser: () => set({ user: null, token: null, isAuthenticated: false }),
 
       hasRole: (...roles) => {
         const { user } = get();
@@ -43,7 +45,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "fg-auth",
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

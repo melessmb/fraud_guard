@@ -51,7 +51,7 @@ export default function LoginPage() {
         email:    (payload.email as string) || "",
         roles:    ((payload as any).realm_access?.roles ?? []) as UserRole[],
       };
-      setUser(userInfo);
+      setUser(userInfo, data.access_token);
       router.push("/");
     } catch {
       setError("Erreur de connexion. Vérifiez que l'API est accessible.");

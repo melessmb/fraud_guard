@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";

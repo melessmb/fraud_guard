@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useQuery } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";
@@ -66,7 +68,7 @@ export default function ScoringPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/v1/score", {
+      const res = await apiFetch("/api/v1/score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";
@@ -25,7 +27,7 @@ export default function ModelesPage() {
   const { data: versions = [], isLoading } = useQuery<ModelVersionResponse[]>({
     queryKey: ["model-versions"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/model/versions", { credentials: "include" });
+      const res = await apiFetch("/api/v1/model/versions", { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -33,7 +35,7 @@ export default function ModelesPage() {
 
   const trainMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/v1/model/train", {
+      const res = await apiFetch("/api/v1/model/train", {
         method: "POST",
         credentials: "include",
       });

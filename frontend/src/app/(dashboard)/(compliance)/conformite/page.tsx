@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";
@@ -44,7 +46,7 @@ export default function ConformitePage() {
   const { data: retention } = useQuery<RetentionStats>({
     queryKey: ["retention-stats"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/compliance/retention-stats", { credentials: "include" });
+      const res = await apiFetch("/api/v1/compliance/retention-stats", { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },

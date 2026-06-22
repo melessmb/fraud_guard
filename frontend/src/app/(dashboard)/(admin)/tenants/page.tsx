@@ -1,5 +1,7 @@
 "use client";
 
+import { apiFetch } from "@/lib/api/fetch";
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Topbar } from "@/components/layout/topbar";
@@ -108,7 +110,7 @@ export default function TenantsPage() {
   const { data: tenants = [], isLoading } = useQuery<TenantResponse[]>({
     queryKey: ["tenants"],
     queryFn: async () => {
-      const res = await fetch("/api/v1/tenants", { credentials: "include" });
+      const res = await apiFetch("/api/v1/tenants", { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
