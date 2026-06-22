@@ -102,6 +102,21 @@ services:
       - api
       - keycloak
 
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        - API_URL=http://api:8000
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   postgres_data:
   keycloak_data:
