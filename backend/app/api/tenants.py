@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
+from app.core.auth import get_current_tenant
 from app.core.audit import log_audit
 from app.core.database import get_db
 from app.models.fraud_log import FraudLog
@@ -108,7 +109,7 @@ def delete_tenant(tenant_id: int, db: Session = Depends(get_db)) -> None:
 
 # ── Policies ──────────────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig)
+@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_admin)])
 def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
@@ -145,8 +146,8 @@ def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(ge
 
 # ── Metrics & Alerts ──────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/metrics", response_model=MetricsResponse)
-def get_tenant_metrics(tenant_id: int, hours: int = 24, db: Session = Depends(get_db)) -> MetricsResponse:
+@router.get("/tenants/{tenant_id}/metrics", response_model=MetricsResponse, dependencies=[Depends(require_admin)])
+def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=168), db: Session = Depends(get_db)) -> MetricsResponse:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     since = datetime.utcnow() - timedelta(hours=hours)
@@ -165,8 +166,8 @@ def get_tenant_metrics(tenant_id: int, hours: int = 24, db: Session = Depends(ge
     )
 
 
-@router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse])
-def get_alerts(tenant_id: int, limit: int = 50, db: Session = Depends(get_db)) -> List[AlertResponse]:
+@router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse], dependencies=[Depends(require_admin)])
+def get_alerts(tenant_id: int, limit: int = Query(default=50, ge=1, le=500), db: Session = Depends(get_db)) -> List[AlertResponse]:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     logs = (
@@ -214,8 +215,15 @@ def configure_webhook(tenant_id: int, config: WebhookConfig, db: Session = Depen
 # ── Batch score ───────────────────────────────────────────────────────────────
 
 @router.post("/tenants/{tenant_id}/events", response_model=List[FraudScoreResponse])
-async def batch_score(tenant_id: int, batch: BatchEventRequest, db: Session = Depends(get_db)) -> List[FraudScoreResponse]:
+async def batch_score(
+    tenant_id: int,
+    batch: BatchEventRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+) -> List[FraudScoreResponse]:
     from app.services.evaluation import score_transaction
+    if tenant.id != tenant_id:
+        raise HTTPException(status_code=403, detail="Accès interdit à ce tenant")
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     results: List[FraudScoreResponse] = []

@@ -1,7 +1,44 @@
+import ipaddress
+import socket
+import urllib.parse
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# RFC-1918 + link-local + loopback ranges blocked for hook URLs
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network(cidr)
+    for cidr in (
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+        "169.254.0.0/16", "127.0.0.0/8", "::1/128", "fc00::/7",
+    )
+]
+
+
+def _validate_hook_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("https", "http"):
+        raise ValueError("L'URL du hook doit utiliser http ou https")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL invalide : hostname manquant")
+    try:
+        addr = ipaddress.ip_address(hostname)
+        if any(addr in net for net in _BLOCKED_NETWORKS):
+            raise ValueError("Adresse IP interne ou réservée interdite pour les hooks")
+    except ValueError as exc:
+        if "interne" in str(exc) or "réservée" in str(exc):
+            raise
+        # DNS hostname — résoudre pour vérifier l'IP cible
+        try:
+            resolved_ip = socket.gethostbyname(hostname)
+            addr = ipaddress.ip_address(resolved_ip)
+            if any(addr in net for net in _BLOCKED_NETWORKS):
+                raise ValueError(f"L'hôte '{hostname}' se résout vers une adresse interne interdite")
+        except socket.gaierror:
+            pass  # Hostname DNS non résolvable localement — on laisse passer, sera rejeté à l'exécution
+    return url
 
 
 class TenantRequest(BaseModel):
@@ -134,6 +171,11 @@ class ScoringHookRequest(BaseModel):
     secret:     Optional[str] = None
     timeout_ms: int = 2000
     enabled:    bool = True
+
+    @field_validator("url")
+    @classmethod
+    def url_no_ssrf(cls, v: str) -> str:
+        return _validate_hook_url(v)
 
 
 class ScoringHookResponse(BaseModel):

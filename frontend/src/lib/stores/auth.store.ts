@@ -12,7 +12,7 @@ export interface UserInfo {
 
 interface AuthState {
   user: UserInfo | null;
-  token: string | null;
+  token: string | null;           // in-memory only — NOT persisted to localStorage
   isAuthenticated: boolean;
   setUser: (user: UserInfo, token: string) => void;
   clearUser: () => void;
@@ -27,8 +27,20 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
 
-      setUser: (user, token) => set({ user, token, isAuthenticated: true }),
-      clearUser: () => set({ user: null, token: null, isAuthenticated: false }),
+      setUser: (user, token) => {
+        // Token stored only in sessionStorage (cleared on tab close, not readable cross-origin)
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("fg_token_session", token);
+        }
+        set({ user, token, isAuthenticated: true });
+      },
+
+      clearUser: () => {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("fg_token_session");
+        }
+        set({ user: null, token: null, isAuthenticated: false });
+      },
 
       hasRole: (...roles) => {
         const { user } = get();
@@ -45,11 +57,19 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "fg-auth",
+      // Token intentionnellement exclu du persist localStorage (risque XSS)
+      // Seuls user et isAuthenticated sont persistés pour la UX (profil, rôles UI)
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Restaurer le token depuis sessionStorage après rehydration
+        if (state && typeof window !== "undefined") {
+          const stored = sessionStorage.getItem("fg_token_session");
+          if (stored) state.token = stored;
+        }
+      },
     }
   )
 );

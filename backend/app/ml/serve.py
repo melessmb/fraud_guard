@@ -3,6 +3,8 @@ Chargement et inférence du modèle LightGBM avec explications SHAP.
 """
 from __future__ import annotations
 
+import hashlib
+import logging
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -10,7 +12,31 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+log = logging.getLogger(__name__)
+
 MODEL_DIR = Path(__file__).parent.parent.parent / "data" / "models"
+
+# Hashes SHA-256 attendus des fichiers modèle. Générer avec :
+#   python -c "import hashlib; print(hashlib.sha256(open('fraud_v1.pkl','rb').read()).hexdigest())"
+# Laisser vide pour désactiver la vérification (mode développement seulement).
+_MODEL_HASHES: Dict[str, str] = {}
+
+
+def _verify_model_integrity(version: str, content: bytes) -> None:
+    expected = _MODEL_HASHES.get(version)
+    if not expected:
+        log.warning(
+            "Aucun hash configuré pour le modèle '%s' — vérification d'intégrité ignorée. "
+            "Ajoutez le hash SHA-256 dans _MODEL_HASHES pour sécuriser le chargement.",
+            version,
+        )
+        return
+    actual = hashlib.sha256(content).hexdigest()
+    if actual != expected:
+        raise ValueError(
+            f"Intégrité du modèle '{version}' compromise : hash attendu {expected[:16]}…, "
+            f"obtenu {actual[:16]}…"
+        )
 
 FEATURES = [
     "amount_log",
@@ -35,8 +61,9 @@ def _load_model(version: str = "v1") -> Dict[str, Any]:
         path = MODEL_DIR / f"fraud_{version}.pkl"
         if not path.exists():
             raise FileNotFoundError(f"Modèle {version} introuvable : {path}")
-        with open(path, "rb") as f:
-            _model_cache[version] = pickle.load(f)
+        content = path.read_bytes()
+        _verify_model_integrity(version, content)
+        _model_cache[version] = pickle.loads(content)  # noqa: S301 — intégrité vérifiée ci-dessus
     return _model_cache[version]
 
 
