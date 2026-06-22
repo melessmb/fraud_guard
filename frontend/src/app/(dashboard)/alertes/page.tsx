@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/stores/app.store";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { AlertDrawer, type AlertDetail } from "@/components/alerts/alert-drawer";
-import { AlertTriangle, RefreshCw, Download, ChevronRight } from "lucide-react";
+import { AlertTriangle, RefreshCw, ChevronRight } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 
 const CHANNELS = ["Tous", "Mobile", "Web", "POS", "ATM"];
 const STATUSES = [
@@ -127,6 +128,13 @@ export default function AlertesPage() {
               <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
+              <ExportButton exports={[
+                {
+                  label: "Alertes (CSV)",
+                  url: `/api/v1/tenants/${activeTenantId}/export/alerts${statusFilter ? `?status=${statusFilter}` : ""}`,
+                  filename: `alertes_${new Date().toISOString().slice(0,10)}.csv`,
+                },
+              ]} />
             </div>
           </CardHeader>
 

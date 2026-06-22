@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import { useAuthStore } from "@/lib/stores/auth.store";
-import { Search, Filter, RefreshCw, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Filter, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 
 interface Transaction {
   id: number;
@@ -85,10 +86,26 @@ export default function TransactionsPage() {
             {data ? `${data.total.toLocaleString()} transactions au total` : "Chargement…"}
           </p>
         </div>
-        <button onClick={() => fetch(page, filters)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton exports={[{
+            label: "Exporter les transactions (CSV)",
+            url: (() => {
+              const p = new URLSearchParams();
+              const tid = isAdmin ? (filters.tenant_id || "1") : String(user?.tenantId ?? "");
+              if (filters.risk_level) p.set("risk_level", filters.risk_level);
+              if (filters.is_fraud !== "") p.set("is_fraud", filters.is_fraud);
+              if (filters.channel)    p.set("channel", filters.channel);
+              if (filters.date_from)  p.set("date_from", filters.date_from);
+              if (filters.date_to)    p.set("date_to", filters.date_to);
+              return `/api/v1/tenants/${tid}/export/transactions?${p}`;
+            })(),
+            filename: `transactions_${new Date().toISOString().slice(0,10)}.csv`,
+          }]} />
+          <button onClick={() => fetch(page, filters)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/stores/app.store";
 import { formatDate } from "@/lib/utils";
-import { FileText, Download, RefreshCw, ShieldCheck, Database } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Database } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 import type { ComplianceReport, AuditLogEntry, RetentionStats } from "@/types/api";
 
 export default function ConformitePage() {
@@ -90,12 +91,23 @@ export default function ConformitePage() {
                 <RefreshCw className="w-3.5 h-3.5" />
                 Générer
               </Button>
-              {report && (
-                <Button variant="outline">
-                  <Download className="w-3.5 h-3.5" />
-                  Exporter PDF
-                </Button>
-              )}
+              <ExportButton exports={[
+                {
+                  label: "Transactions CSV",
+                  url: `/api/v1/tenants/${activeTenantId}/export/transactions?date_from=${fromDate}&date_to=${toDate}`,
+                  filename: `transactions_${fromDate}_${toDate}.csv`,
+                },
+                {
+                  label: "Alertes fraude CSV",
+                  url: `/api/v1/tenants/${activeTenantId}/export/alerts?date_from=${fromDate}&date_to=${toDate}`,
+                  filename: `alertes_${fromDate}_${toDate}.csv`,
+                },
+                {
+                  label: "Journal d'audit CSV",
+                  url: `/api/v1/export/audit-log?date_from=${fromDate}&date_to=${toDate}&tenant_id=${activeTenantId}`,
+                  filename: `journal_audit_${fromDate}_${toDate}.csv`,
+                },
+              ]} />
             </div>
 
             {report && (
