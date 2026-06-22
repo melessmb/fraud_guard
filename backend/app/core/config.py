@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,9 +14,11 @@ class Settings(BaseSettings):
     # Security (conservé pour compatibilité hash API keys existantes)
     secret_key: str = "CHANGE_ME"
 
-    # Keycloak — IdP centralisé (remplace admin_api_key + JWT internes)
+    # Keycloak — IdP centralisé
     keycloak_url: str = "http://localhost:8080"
     keycloak_realm: str = "fraudguard"
+    # Audience JWT : si non vide, le claim "aud" du token est vérifié
+    keycloak_client_id: str = ""
 
     # CORS — liste de domaines séparés par virgule ; "*" uniquement en debug
     cors_origins: str = "*"
@@ -30,3 +34,28 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── Validation de sécurité au démarrage ───────────────────────────────────────
+
+if not settings.debug:
+    if settings.secret_key in ("CHANGE_ME", "dev-secret-key-change-in-production", ""):
+        raise RuntimeError(
+            "SECRET_KEY non sécurisée en production. "
+            "Définissez SECRET_KEY dans les variables d'environnement."
+        )
+    if settings.cors_origins == "*":
+        raise RuntimeError(
+            "CORS_ORIGINS='*' interdit en production. "
+            "Définissez CORS_ORIGINS avec les domaines autorisés."
+        )
+    if not settings.keycloak_client_id:
+        warnings.warn(
+            "KEYCLOAK_CLIENT_ID non configuré : la vérification d'audience JWT est désactivée. "
+            "Définissez KEYCLOAK_CLIENT_ID pour renforcer la sécurité des tokens.",
+            stacklevel=1,
+        )
+else:
+    if settings.secret_key in ("CHANGE_ME", "dev-secret-key-change-in-production"):
+        warnings.warn("⚠ SECRET_KEY par défaut — ne pas utiliser en production", stacklevel=1)
+    if settings.cors_origins == "*":
+        warnings.warn("⚠ CORS_ORIGINS=* — ne pas utiliser en production", stacklevel=1)

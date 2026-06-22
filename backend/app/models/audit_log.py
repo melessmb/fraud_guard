@@ -15,5 +15,6 @@ class AuditLog(Base):
     actor_id = Column(String(255), nullable=True)
     resource_type = Column(String(64), nullable=True)
     resource_id = Column(String(255), nullable=True)
+    tenant_id = Column(Integer, nullable=True, index=True)  # scoping sécurisé par tenant
     details = Column(JSON, nullable=True)
     outcome = Column(String(32), default="success", nullable=False)

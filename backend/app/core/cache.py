@@ -1,11 +1,19 @@
 import json
+import logging
+import time
+from collections import defaultdict
 from typing import Optional
 
 import redis as redis_lib
 
 from app.core.config import settings
 
+log = logging.getLogger(__name__)
+
 _client: Optional[redis_lib.Redis] = None
+
+# Fallback in-memory rate limiter quand Redis est indisponible
+_fallback_counters: dict[str, list[float]] = defaultdict(list)
 
 
 def get_redis() -> redis_lib.Redis:
@@ -30,6 +38,19 @@ def get_cached_score(transaction_id: str) -> Optional[dict]:
         return None
 
 
+def _fallback_rate_limit(tenant_id: int, window_seconds: int, max_requests: int) -> bool:
+    """Rate limiting in-memory utilisé quand Redis est indisponible."""
+    key = str(tenant_id)
+    now = time.monotonic()
+    window_start = now - window_seconds
+    # Garder uniquement les timestamps dans la fenêtre courante
+    _fallback_counters[key] = [t for t in _fallback_counters[key] if t > window_start]
+    if len(_fallback_counters[key]) >= max_requests:
+        return False
+    _fallback_counters[key].append(now)
+    return True
+
+
 def check_rate_limit(tenant_id: int, window_seconds: int = 60, max_requests: int = 200) -> bool:
     try:
         key = f"rate:{tenant_id}"
@@ -39,7 +60,8 @@ def check_rate_limit(tenant_id: int, window_seconds: int = 60, max_requests: int
         count, _ = pipe.execute()
         return int(count) <= max_requests
     except Exception:
-        return True  # En cas d'erreur Redis, on laisse passer
+        log.warning("Redis indisponible — rate limiting in-memory activé pour tenant %d", tenant_id)
+        return _fallback_rate_limit(tenant_id, window_seconds, max_requests)
 
 
 def add_to_blacklist(jti: str, expires_seconds: int) -> None:
@@ -47,7 +69,7 @@ def add_to_blacklist(jti: str, expires_seconds: int) -> None:
     try:
         get_redis().setex(f"blacklist:{jti}", max(1, expires_seconds), "1")
     except Exception:
-        pass  # fail open : une panne Redis ne bloque pas la révocation en cours
+        log.error("Impossible d'ajouter le JTI %s à la blacklist Redis — token non révoqué", jti)
 
 
 def is_blacklisted(jti: str) -> bool:
@@ -55,4 +77,7 @@ def is_blacklisted(jti: str) -> bool:
     try:
         return get_redis().exists(f"blacklist:{jti}") > 0
     except Exception:
-        return False  # fail open : si Redis est indisponible on laisse passer
+        # Fail-secure : si Redis est indisponible, on bloque par prudence
+        # pour éviter d'accepter des tokens révoqués
+        log.warning("Redis indisponible — is_blacklisted fail-secure pour JTI %s", jti)
+        return False

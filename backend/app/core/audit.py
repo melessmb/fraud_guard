@@ -11,6 +11,7 @@ def log_audit(
     actor_id: str | None = None,
     resource_type: str | None = None,
     resource_id: str | None = None,
+    tenant_id: int | None = None,
     details: dict | None = None,
     outcome: str = "success",
 ) -> None:
@@ -20,6 +21,7 @@ def log_audit(
         actor_id=str(actor_id) if actor_id is not None else None,
         resource_type=resource_type,
         resource_id=str(resource_id) if resource_id is not None else None,
+        tenant_id=tenant_id,
         details=details,
         outcome=outcome,
     ))

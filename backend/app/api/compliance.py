@@ -55,7 +55,7 @@ def get_audit_log(
     if action_type:
         q = q.filter(AuditLog.action_type == action_type)
     if effective_tenant is not None:
-        q = q.filter(AuditLog.resource_id == str(effective_tenant))
+        q = q.filter(AuditLog.tenant_id == effective_tenant)
 
     total = q.count()
     rows  = q.offset(offset).limit(limit).all()
