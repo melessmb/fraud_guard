@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytique": "Analytique",
+    "alertes": "Alertes",
+    "scoring": "Scoring",
+    "tenants": "Tenants",
+    "modeles": "Modèles ML",
+    "conformite": "Conformité",
+    "monTenant": "Mon entreprise",
+    "profil": "Profil"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "username": "Identifiant",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "loading": "Connexion en cours…",
+    "error": "Identifiants incorrects",
+    "subtitle": "Accédez à votre espace d'administration",
+    "secured": "Authentification sécurisée via Keycloak"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalTransactions": "Total transactions",
+    "fraudDetected": "Fraudes détectées",
+    "fraudRate": "Taux de fraude",
+    "activeModel": "Modèle actif",
+    "vsLastMonth": "vs mois dernier",
+    "recentAlerts": "Alertes récentes",
+    "byChannel": "Par canal",
+    "activity": "Activité des transactions",
+    "legitimate": "Légitimes",
+    "fraud": "Fraudes"
+  },
+  "alerts": {
+    "title": "Alertes de fraude",
+    "date": "Date",
+    "transaction": "Transaction",
+    "channel": "Canal",
+    "amount": "Montant",
+    "score": "Score",
+    "status": "Statut",
+    "fraud": "Fraude",
+    "review": "Révision",
+    "legitimate": "Légitime",
+    "noAlerts": "Aucune alerte pour ce tenant.",
+    "filters": "Filtres"
+  },
+  "scoring": {
+    "title": "Scoring temps réel",
+    "analyze": "Analyser la transaction",
+    "analyzing": "Analyse en cours…",
+    "result": "Résultat",
+    "riskLow": "Faible",
+    "riskMedium": "Moyen",
+    "riskHigh": "Élevé",
+    "fraudDetected": "Fraude détectée — transaction bloquée",
+    "legitimate": "Transaction légitime — approuvée",
+    "shapFactors": "Facteurs déterminants (SHAP)",
+    "history": "Historique de session",
+    "clearHistory": "Effacer"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "noData": "Aucune donnée disponible",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "refresh": "Actualiser",
+    "seeMore": "Voir plus",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "tenantId": "Tenant ID",
+    "production": "production",
+    "sandbox": "sandbox"
+  },
+  "roles": {
+    "admin": "Admin Plateforme",
+    "tenant_admin": "Admin Tenant",
+    "compliance": "Conformité",
+    "tenant": "Tenant API"
+  }
+}

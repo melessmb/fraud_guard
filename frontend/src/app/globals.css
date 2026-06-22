@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts — Inter ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Light mode — Modern SaaS */
+    --background:            0 0% 98%;
+    --foreground:            222 47% 11%;
+    --card:                  0 0% 100%;
+    --card-foreground:       222 47% 11%;
+    --border:                220 13% 91%;
+    --input:                 220 13% 91%;
+    --ring:                  142 71% 45%;
+    --primary:               142 71% 45%;
+    --primary-foreground:    0 0% 100%;
+    --secondary:             220 14% 96%;
+    --secondary-foreground:  222 47% 11%;
+    --muted:                 220 14% 96%;
+    --muted-foreground:      220 9% 46%;
+    --accent:                220 14% 96%;
+    --accent-foreground:     222 47% 11%;
+    --destructive:           0 84% 60%;
+    --destructive-foreground:0 0% 100%;
+    --radius:                0.5rem;
+
+    /* Sidebar */
+    --sidebar-bg:            0 0% 100%;
+    --sidebar-border:        220 13% 91%;
+    --sidebar-active:        142 71% 95%;
+    --sidebar-active-text:   142 71% 35%;
+  }
+
+  .dark {
+    /* Dark mode — OLED Fintech */
+    --background:            222 47% 6%;
+    --foreground:            210 40% 98%;
+    --card:                  222 47% 10%;
+    --card-foreground:       210 40% 98%;
+    --border:                217 33% 17%;
+    --input:                 217 33% 17%;
+    --ring:                  142 71% 45%;
+    --primary:               142 71% 45%;
+    --primary-foreground:    0 0% 100%;
+    --secondary:             217 33% 17%;
+    --secondary-foreground:  210 40% 98%;
+    --muted:                 217 33% 17%;
+    --muted-foreground:      215 20% 55%;
+    --accent:                217 33% 17%;
+    --accent-foreground:     210 40% 98%;
+    --destructive:           0 63% 55%;
+    --destructive-foreground:0 0% 100%;
+
+    /* Sidebar dark */
+    --sidebar-bg:            222 47% 8%;
+    --sidebar-border:        217 33% 14%;
+    --sidebar-active:        142 71% 10%;
+    --sidebar-active-text:   142 71% 45%;
+  }
+
+  * {
+    @apply border-border;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-background; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground; }
+}
+
+@layer utilities {
+  /* Card hover animation subtile */
+  .card-hover {
+    @apply transition-shadow duration-200 ease-in-out;
+  }
+  .card-hover:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #22c55e, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Status dots */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+  .status-online  { @apply bg-success; }
+  .status-offline { @apply bg-danger; }
+  .status-pending { @apply bg-warning; }
+}

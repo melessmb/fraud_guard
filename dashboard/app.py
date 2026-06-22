@@ -1,4 +1,4 @@
-"""Dashboard d'administration FraudGuard — style fintech clair."""
+"""Dashboard d'administration FraudGuard — Dark Mode OLED · Glassmorphism · Fintech."""
 
 from __future__ import annotations
 
@@ -24,134 +24,218 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Palette ───────────────────────────────────────────────────────────────────
-GREEN        = "#16a34a"
-GREEN_BG     = "#f0fdf4"
-RED          = "#ef4444"
-RED_BG       = "#fee2e2"
-AMBER        = "#f59e0b"
-AMBER_BG     = "#fef3c7"
-GRAY_BG      = "#f5f5f4"
-BORDER       = "#e5e7eb"
-TEXT         = "#111827"
-TEXT_MUT     = "#6b7280"
-WHITE        = "#ffffff"
-BLUE         = "#2563eb"
-BLUE_BG      = "#eff6ff"
+# ── Palette Dark Mode OLED · Glassmorphism · Fintech ─────────────────────────
+# Source : ui-ux-pro-max skill — Financial Dashboard + Fintech/Crypto
+BG_BASE      = "#0F172A"   # OLED dark background
+BG_CARD      = "#1E293B"   # Glassmorphism card bg
+BG_ELEVATED  = "#334155"   # Elevated / hover
 
-# ── Bootstrap Icons via unpkg ─────────────────────────────────────────────────
-st.markdown(
-    '<link rel="stylesheet" href="https://unpkg.com/bootstrap-icons@1.11.3/font/bootstrap-icons.css">',
-    unsafe_allow_html=True,
-)
+GREEN        = "#22C55E"   # Profit / légitime
+GREEN_BG     = "rgba(34, 197, 94, 0.12)"
+GREEN_BORDER = "rgba(34, 197, 94, 0.25)"
+RED          = "#EF4444"   # Fraude / perte
+RED_BG       = "rgba(239, 68, 68, 0.12)"
+AMBER        = "#F59E0B"   # Alerte / révision
+AMBER_BG     = "rgba(245, 158, 11, 0.12)"
+BLUE         = "#3B82F6"   # Confiance / info
+BLUE_BG      = "rgba(59, 130, 246, 0.12)"
+PURPLE       = "#8B5CF6"   # Tech / premium
+PURPLE_BG    = "rgba(139, 92, 246, 0.12)"
 
-# ── CSS global ────────────────────────────────────────────────────────────────
+GRAY_BG      = BG_BASE
+WHITE        = BG_CARD
+BORDER       = "rgba(255, 255, 255, 0.08)"
+BORDER_SOLID = "#334155"
+TEXT         = "#F8FAFC"
+TEXT_MUT     = "#94A3B8"
+TEXT_MUTED2  = "#64748B"
+
+# ── Fonts + Icons ─────────────────────────────────────────────────────────────
+st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+""", unsafe_allow_html=True)
+
+# ── CSS global — Dark Mode OLED · Glassmorphism ───────────────────────────────
 st.markdown(f"""
 <style>
-/* ── Base ── */
+/* ── Fonts & Base ── */
+* {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }}
 html, body, [data-testid="stApp"] {{
-    background: {GRAY_BG} !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    background: {BG_BASE} !important;
+    color: {TEXT} !important;
 }}
 #MainMenu, footer, [data-testid="stToolbar"], [data-testid="stHeader"] {{ display: none !important; }}
 .block-container {{ padding: 0 !important; max-width: 100% !important; }}
 
-/* ── st.container(border=True) → fg-card look ── */
+/* ── Glassmorphism cards ── */
 [data-testid="stVerticalBlockBorderWrapper"] {{
-    background: {WHITE} !important;
-    border-radius: 12px !important;
-    border: 0.5px solid {BORDER} !important;
-    box-shadow: none !important;
+    background: rgba(30, 41, 59, 0.6) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-radius: 16px !important;
+    border: 1px solid {BORDER} !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,.3) !important;
     padding: 6px 4px !important;
 }}
-/* Supprime le padding interne Streamlit dans les cartes */
-[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {{
-    gap: 0 !important;
-}}
-/* Retire le padding excessif autour des graphiques Plotly dans les cartes */
+[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {{ gap: 0 !important; }}
 [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stPlotlyChart"] {{
-    margin-top: -8px !important;
-    margin-bottom: -4px !important;
+    margin-top: -8px !important; margin-bottom: -4px !important;
 }}
 
-/* ── Sidebar ── */
+/* ── Streamlit global dark overrides ── */
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stMarkdownContainer"] div {{ color: {TEXT} !important; }}
+.stMetric label {{ color: {TEXT_MUT} !important; }}
+.stMetric [data-testid="stMetricValue"] {{ color: {TEXT} !important; }}
+[data-testid="stDataFrameResizable"] {{ background: {BG_CARD} !important; }}
+[data-testid="stTabs"] [data-baseweb="tab-list"] {{
+    background: {BG_CARD} !important;
+    border-radius: 10px !important;
+    border: 1px solid {BORDER_SOLID} !important;
+    gap: 2px !important;
+}}
+[data-testid="stTabs"] [data-baseweb="tab"] {{
+    color: {TEXT_MUT} !important;
+    background: transparent !important;
+    border-radius: 8px !important;
+}}
+[data-testid="stTabs"] [aria-selected="true"] {{
+    background: {BG_ELEVATED} !important;
+    color: {TEXT} !important;
+}}
+[data-testid="stSelectbox"] > div,
+[data-testid="stTextInput"] > div > div,
+[data-testid="stNumberInput"] > div > div,
+[data-testid="stTextArea"] > div {{
+    background: {BG_ELEVATED} !important;
+    border-color: {BORDER_SOLID} !important;
+    color: {TEXT} !important;
+    border-radius: 8px !important;
+}}
+[data-testid="stSlider"] [data-testid="stSliderThumb"] {{ background: {GREEN} !important; }}
+.stButton button {{
+    background: {BG_ELEVATED} !important;
+    border: 1px solid {BORDER_SOLID} !important;
+    color: {TEXT} !important;
+    border-radius: 8px !important;
+    transition: all 0.2s !important;
+}}
+.stButton button:hover {{
+    border-color: {GREEN} !important;
+    color: {GREEN} !important;
+    box-shadow: 0 0 12px {GREEN_BG} !important;
+}}
+[data-testid="baseButton-primary"] {{
+    background: linear-gradient(135deg, {GREEN}, #16a34a) !important;
+    border: none !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+}}
+[data-testid="stExpander"] {{
+    background: {BG_CARD} !important;
+    border: 1px solid {BORDER_SOLID} !important;
+    border-radius: 12px !important;
+}}
+[data-testid="stExpander"] summary {{ color: {TEXT} !important; }}
+[data-testid="stSpinner"] {{ color: {GREEN} !important; }}
+
+/* ── Sidebar dark ── */
 [data-testid="stSidebar"] {{
-    background: {WHITE} !important;
-    border-right: 0.5px solid {BORDER} !important;
+    background: linear-gradient(180deg, #0A1628 0%, {BG_BASE} 100%) !important;
+    border-right: 1px solid {BORDER_SOLID} !important;
 }}
-[data-testid="stSidebar"] .stRadio label {{
-    display: flex !important; align-items: center !important; gap: 10px !important;
-    padding: 9px 12px !important; border-radius: 8px !important;
-    font-size: 14px !important; color: {TEXT_MUT} !important;
-    cursor: pointer !important; width: 100% !important;
-}}
-
-/* ── KPI text ── */
-.fg-kpi-label {{
-    font-size: 12px; color: {TEXT_MUT}; margin: 2px 0 4px;
-    display: flex; justify-content: space-between; align-items: center;
-}}
-.fg-kpi-value {{ font-size: 24px; font-weight: 600; color: {TEXT}; line-height: 1.2; margin-bottom: 2px; }}
-.fg-delta-pos {{ font-size: 12px; color: {GREEN}; font-weight: 500; margin-bottom: 4px; }}
-.fg-delta-neg {{ font-size: 12px; color: {RED};   font-weight: 500; margin-bottom: 4px; }}
-.fg-delta-neu {{ font-size: 12px; color: {AMBER}; font-weight: 500; margin-bottom: 4px; }}
-.fg-section   {{ font-size: 15px; font-weight: 600; color: {TEXT}; margin: 0 0 12px; }}
-
-/* ── Badges ── */
-.badge-admin  {{ display:inline-block; background:{BLUE_BG};  color:{BLUE};  font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px; }}
-.badge-tenant {{ display:inline-block; background:{GREEN_BG}; color:#166534; font-size:10px; font-weight:600; padding:2px 8px; border-radius:20px; }}
-.badge-fraud  {{ display:inline-block; background:{RED_BG};   color:#b91c1c; font-size:11px; font-weight:600; padding:2px 10px; border-radius:20px; }}
-.badge-review {{ display:inline-block; background:{AMBER_BG}; color:#92400e; font-size:11px; font-weight:600; padding:2px 10px; border-radius:20px; }}
-.badge-ok     {{ display:inline-block; background:{GREEN_BG}; color:#166534; font-size:11px; font-weight:600; padding:2px 10px; border-radius:20px; }}
-
-/* ── Table ── */
-.fg-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
-.fg-table th {{ color:{TEXT_MUT}; font-weight:500; text-align:left; padding:6px 10px; border-bottom:0.5px solid {BORDER}; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }}
-.fg-table td {{ padding:9px 10px; border-bottom:0.5px solid {BORDER}; color:{TEXT}; }}
-.fg-table tr:last-child td {{ border-bottom:none; }}
-
-/* ── Progress bars ── */
-.fg-bar-wrap {{ height:5px; background:#f3f4f6; border-radius:3px; margin-top:4px; }}
-.fg-bar {{ height:5px; border-radius:3px; background:{GREEN}; }}
+[data-testid="stSidebar"] * {{ color: {TEXT} !important; }}
 
 /* ── Topbar ── */
 .fg-topbar {{
-    background: {WHITE}; border-bottom: 0.5px solid {BORDER};
-    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 0;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid {BORDER_SOLID};
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
 }}
-.fg-topbar-title {{ font-size: 18px; font-weight: 600; color: {TEXT}; }}
-.fg-topbar-sub   {{ font-size: 12px; color: {TEXT_MUT}; margin-top: 1px; }}
+.fg-topbar-title {{ font-size: 18px; font-weight: 700; color: {TEXT}; letter-spacing: -0.3px; }}
+.fg-topbar-sub   {{ font-size: 12px; color: {TEXT_MUT}; margin-top: 2px; }}
+
+/* ── Avatar ── */
 .fg-avatar {{
-    width:30px; height:30px; border-radius:50%;
+    width:32px; height:32px; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center;
-    font-size:11px; font-weight:600; color:#fff;
+    font-size:12px; font-weight:700; color:#fff;
 }}
 
-/* ── Page content wrapper ── */
+/* ── Page wrapper ── */
 .fg-page {{ padding: 20px 28px; }}
 
-/* ── Bootstrap Icons sizing ── */
+/* ── KPI ── */
+.fg-kpi-label {{
+    font-size: 11px; color: {TEXT_MUT}; margin: 2px 0 6px;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; justify-content: space-between; align-items: center;
+}}
+.fg-kpi-value {{ font-size: 26px; font-weight: 700; color: {TEXT}; line-height: 1.1; margin-bottom: 4px; letter-spacing: -0.5px; }}
+.fg-delta-pos {{ font-size: 11px; color: {GREEN}; font-weight: 500; }}
+.fg-delta-neg {{ font-size: 11px; color: {RED};   font-weight: 500; }}
+.fg-delta-neu {{ font-size: 11px; color: {AMBER}; font-weight: 500; }}
+.fg-section   {{ font-size: 14px; font-weight: 600; color: {TEXT}; margin: 0 0 14px; letter-spacing: -0.2px; }}
+
+/* ── KPI icon chip ── */
+.fg-kpi-icon {{
+    width:36px; height:36px; border-radius:10px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:16px;
+}}
+
+/* ── Badges ── */
+.badge-admin  {{ display:inline-block; background:{BLUE_BG};   color:{BLUE};   font-size:10px; font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(59,130,246,.2); }}
+.badge-tenant {{ display:inline-block; background:{GREEN_BG};  color:{GREEN};  font-size:10px; font-weight:600; padding:3px 10px; border-radius:20px; border:1px solid rgba(34,197,94,.2); }}
+.badge-fraud  {{ display:inline-block; background:{RED_BG};    color:{RED};    font-size:11px; font-weight:600; padding:3px 12px; border-radius:20px; border:1px solid rgba(239,68,68,.2); }}
+.badge-review {{ display:inline-block; background:{AMBER_BG};  color:{AMBER};  font-size:11px; font-weight:600; padding:3px 12px; border-radius:20px; border:1px solid rgba(245,158,11,.2); }}
+.badge-ok     {{ display:inline-block; background:{GREEN_BG};  color:{GREEN};  font-size:11px; font-weight:600; padding:3px 12px; border-radius:20px; border:1px solid rgba(34,197,94,.2); }}
+
+/* ── Table ── */
+.fg-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
+.fg-table th {{ color:{TEXT_MUT}; font-weight:500; text-align:left; padding:8px 12px;
+               border-bottom:1px solid {BORDER_SOLID}; font-size:10px;
+               text-transform:uppercase; letter-spacing:.06em; }}
+.fg-table td {{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04); color:{TEXT}; }}
+.fg-table tr:hover td {{ background: rgba(255,255,255,.03); }}
+.fg-table tr:last-child td {{ border-bottom:none; }}
+
+/* ── Progress bars ── */
+.fg-bar-wrap {{ height:4px; background:{BG_ELEVATED}; border-radius:4px; margin-top:5px; }}
+.fg-bar {{ height:4px; border-radius:4px; background: linear-gradient(90deg, {GREEN}, #16a34a); }}
+
+/* ── Bootstrap Icons ── */
 .bi {{ font-size: 15px; line-height: 1; vertical-align: -2px; }}
 .bi-lg {{ font-size: 20px; }}
 .bi-xl {{ font-size: 28px; }}
 
-/* ── KPI icon chip ── */
-.fg-kpi-icon {{
-    width:32px; height:32px; border-radius:8px;
-    display:inline-flex; align-items:center; justify-content:center;
-    font-size:15px; margin-bottom:8px;
-}}
+/* ── Glow effects on alerts ── */
+.glow-red   {{ box-shadow: 0 0 20px rgba(239,68,68,.15) !important; border-color: rgba(239,68,68,.3) !important; }}
+.glow-green {{ box-shadow: 0 0 20px rgba(34,197,94,.15) !important; border-color: rgba(34,197,94,.3) !important; }}
+.glow-amber {{ box-shadow: 0 0 20px rgba(245,158,11,.15) !important; border-color: rgba(245,158,11,.3) !important; }}
 
-/* ── Info row table ── */
-.fg-info-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
-.fg-info-table td {{ padding:8px 0; border-bottom:0.5px solid {BORDER}; }}
-.fg-info-table tr:last-child td {{ border-bottom:none; }}
+/* ── Info row ── */
 .fg-info-label {{ color:{TEXT_MUT}; font-size:12px; display:flex; align-items:center; gap:6px; }}
 
+/* ── Scrollbar ── */
+::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+::-webkit-scrollbar-track {{ background: {BG_BASE}; }}
+::-webkit-scrollbar-thumb {{ background: {BORDER_SOLID}; border-radius: 3px; }}
+::-webkit-scrollbar-thumb:hover {{ background: {TEXT_MUTED2}; }}
+
 /* ── option_menu overrides ── */
-.nav-link {{ border-radius:8px !important; }}
-.nav-link-selected {{ background-color:{GREEN_BG} !important; color:{GREEN} !important; }}
+.nav-link {{ border-radius: 10px !important; margin: 2px 0 !important; }}
+.nav-link-selected {{
+    background: linear-gradient(135deg, rgba(34,197,94,.15), rgba(34,197,94,.08)) !important;
+    color: {GREEN} !important;
+    border-left: 3px solid {GREEN} !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -307,16 +391,25 @@ def _rgba(hex_color: str, alpha: float = 0.08) -> str:
 def sparkline(values: list[float], color: str) -> go.Figure:
     fig = go.Figure(go.Scatter(
         y=values, mode="lines",
-        line=dict(color=color, width=1.8),
-        fill="tozeroy", fillcolor=_rgba(color),
+        line=dict(color=color, width=2),
+        fill="tozeroy", fillcolor=_rgba(color, 0.15),
     ))
     fig.update_layout(
-        height=36, margin=dict(l=0, r=0, t=0, b=0),
+        height=40, margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(visible=False), yaxis=dict(visible=False),
         showlegend=False,
     )
     return fig
+
+
+_PLOTLY_DARK = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font_color=TEXT,
+    xaxis=dict(showgrid=False, color=TEXT_MUT, showline=False, zeroline=False),
+    yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,.05)", color=TEXT_MUT, showline=False, zeroline=False),
+)
 
 
 def _chart_cfg() -> dict:
@@ -430,32 +523,50 @@ def _render_hooks_tab(tenant_id_for_hooks: int) -> None:
 # LOGIN
 # ═══════════════════════════════════════════════════════════════════════════════
 if not _is_authenticated():
-    _, center, _ = st.columns([1, 1.2, 1])
+    # ── Background gradient login ──────────────────────────────────────────────
+    st.markdown(f"""
+    <style>
+    [data-testid="stApp"] {{
+        background: radial-gradient(ellipse at 20% 50%, rgba(34,197,94,.06) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(59,130,246,.06) 0%, transparent 60%),
+                    {BG_BASE} !important;
+    }}
+    </style>""", unsafe_allow_html=True)
+
+    _, center, _ = st.columns([1, 1.1, 1])
     with center:
-        st.markdown("<div style='height:60px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
 
         # Logo + titre
         st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
-          <div style="width:44px;height:44px;border-radius:12px;background:{GREEN};
-                      display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;">
-            <i class="bi bi-shield-shaded" style="font-size:22px;"></i>
+        <div style="text-align:center;margin-bottom:32px;">
+          <div style="width:64px;height:64px;border-radius:18px;margin:0 auto 16px;
+                      background:linear-gradient(135deg,{GREEN},{BLUE});
+                      display:flex;align-items:center;justify-content:center;color:#fff;
+                      box-shadow:0 8px 32px rgba(34,197,94,.3);">
+            <i class="bi bi-shield-shaded" style="font-size:28px;"></i>
           </div>
-          <div>
-            <div style="font-size:20px;font-weight:700;color:{TEXT};">FraudGuard</div>
-            <div style="font-size:12px;color:{TEXT_MUT};">Détection de fraude — Afrique de l'Ouest</div>
+          <div style="font-size:24px;font-weight:700;color:{TEXT};letter-spacing:-0.5px;">FraudGuard</div>
+          <div style="font-size:13px;color:{TEXT_MUT};margin-top:4px;">
+            Détection de fraude — Afrique de l'Ouest
           </div>
         </div>
         """, unsafe_allow_html=True)
 
         with st.container(border=True):
-            st.markdown(f"<p style='font-size:16px;font-weight:600;color:{TEXT};margin:0 0 20px;'>Connexion</p>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <p style='font-size:17px;font-weight:700;color:{TEXT};margin:0 0 6px;letter-spacing:-0.3px;'>
+              Connexion
+            </p>
+            <p style='font-size:12px;color:{TEXT_MUT};margin:0 0 20px;'>
+              Accédez à votre espace d'administration
+            </p>""", unsafe_allow_html=True)
 
             with st.form("login_form", border=False):
                 username = st.text_input("Identifiant", placeholder="ex: fraudguard-admin")
                 password = st.text_input("Mot de passe", type="password")
                 submitted = st.form_submit_button(
-                    "Se connecter", type="primary", use_container_width=True,
+                    "Se connecter →", type="primary", use_container_width=True,
                 )
 
             if submitted:
@@ -469,11 +580,13 @@ if not _is_authenticated():
                     else:
                         st.rerun()
 
-        st.markdown(
-            f"<p style='text-align:center;font-size:11px;color:{TEXT_MUT};margin-top:12px;'>"
-            "Authentification sécurisée via Keycloak</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"""
+        <div style="text-align:center;margin-top:16px;">
+          <i class="bi bi-shield-lock" style="color:{TEXT_MUTED2};font-size:12px;"></i>
+          <span style="font-size:11px;color:{TEXT_MUTED2};margin-left:5px;">
+            Authentification sécurisée via Keycloak
+          </span>
+        </div>""", unsafe_allow_html=True)
     st.stop()
 
 
@@ -505,12 +618,17 @@ role_badge = f'<span class="badge-admin" style="background:{av_color}20;color:{a
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:10px;padding:4px 0 18px;">
-      <div style="width:32px;height:32px;border-radius:8px;background:{GREEN};
-                  display:flex;align-items:center;justify-content:center;color:#fff;">
-        <i class="bi bi-shield-shaded" style="font-size:17px;"></i>
+    <div style="display:flex;align-items:center;gap:12px;padding:4px 0 20px;">
+      <div style="width:36px;height:36px;border-radius:10px;
+                  background:linear-gradient(135deg,{GREEN},{BLUE});
+                  display:flex;align-items:center;justify-content:center;color:#fff;
+                  box-shadow:0 4px 12px rgba(34,197,94,.3);">
+        <i class="bi bi-shield-shaded" style="font-size:18px;"></i>
       </div>
-      <span style="font-size:16px;font-weight:600;color:{TEXT};">FraudGuard</span>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:{TEXT};letter-spacing:-0.3px;">FraudGuard</div>
+        <div style="font-size:10px;color:{TEXT_MUT};letter-spacing:.05em;text-transform:uppercase;">Admin Console</div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -544,12 +662,14 @@ with st.sidebar:
         icons=nav_icons,
         default_index=0,
         styles={
-            "container":       {"padding": "0", "background-color": "transparent"},
-            "icon":            {"color": TEXT_MUT, "font-size": "14px"},
-            "nav-link":        {"font-size": "13px", "color": TEXT_MUT,
-                                "padding": "8px 12px", "border-radius": "8px",
-                                "--hover-color": GREEN_BG},
-            "nav-link-selected": {"background-color": GREEN_BG, "color": GREEN, "font-weight": "500"},
+            "container":         {"padding": "0", "background-color": "transparent"},
+            "icon":              {"color": TEXT_MUT, "font-size": "14px"},
+            "nav-link":          {"font-size": "13px", "color": TEXT_MUT,
+                                  "padding": "9px 14px", "border-radius": "10px",
+                                  "--hover-color": BG_ELEVATED},
+            "nav-link-selected": {"background": f"linear-gradient(135deg, rgba(34,197,94,.15), rgba(34,197,94,.08))",
+                                  "color": GREEN, "font-weight": "600",
+                                  "border-left": f"3px solid {GREEN}"},
         },
     )
 
@@ -563,25 +683,30 @@ with st.sidebar:
     else:
         st.markdown(f"<p style='font-size:13px;color:{TEXT};font-weight:500;'>ID {st.session_state['tenant_id']}</p>", unsafe_allow_html=True)
 
-    st.markdown("<hr style='border:none;border-top:0.5px solid #e5e7eb;margin:12px 0;'>", unsafe_allow_html=True)
+    st.markdown(f"<hr style='border:none;border-top:1px solid {BORDER_SOLID};margin:12px 0;'>", unsafe_allow_html=True)
     try:
         _h = requests.get(f"{st.session_state['api_url']}/health", timeout=2)
-        ver      = _h.json().get("version", "?") if _h.ok else "?"
-        api_icon = "bi-circle-fill"
-        api_col  = GREEN
-        api_lbl  = f"API en ligne — v{ver}"
+        ver     = _h.json().get("version", "?") if _h.ok else "?"
+        api_col = GREEN
+        api_lbl = f"API v{ver} — en ligne"
     except Exception:
-        api_icon = "bi-circle-fill"
-        api_col  = RED
-        api_lbl  = "API hors ligne"
-    st.markdown(f"<div style='display:flex;align-items:center;gap:7px;font-size:12px;'><i class='bi {api_icon}' style='color:{api_col};font-size:9px;'></i><span style='color:{api_col};font-weight:500;'>{api_lbl}</span></div>", unsafe_allow_html=True)
-
-    st.markdown("<hr style='border:none;border-top:0.5px solid #e5e7eb;margin:12px 0;'>", unsafe_allow_html=True)
+        api_col = RED
+        api_lbl = "API hors ligne"
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-      <div class="fg-avatar" style="background:{av_color};">{initials}</div>
-      <div>
-        <div style="font-size:13px;font-weight:500;color:{TEXT};">{username}</div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+                background:rgba(255,255,255,.03);border-radius:8px;
+                border:1px solid {BORDER_SOLID};font-size:12px;">
+      <i class="bi bi-circle-fill" style="color:{api_col};font-size:8px;"></i>
+      <span style="color:{api_col};font-weight:500;">{api_lbl}</span>
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown(f"<hr style='border:none;border-top:1px solid {BORDER_SOLID};margin:12px 0;'>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;
+                background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:10px;">
+      <div class="fg-avatar" style="background:linear-gradient(135deg,{av_color},{BLUE});">{initials}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:{TEXT};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{username}</div>
         <div style="margin-top:2px;">{role_badge}</div>
       </div>
     </div>
@@ -599,24 +724,31 @@ date_str = f"{jours[now.weekday()]} {now.day} {mois[now.month-1]} {now.year}"
 st.markdown(f"""
 <div class="fg-topbar">
   <div>
-    <div class="fg-topbar-title">Bonjour, {username} <i class="bi bi-hand-wave" style="font-size:16px;"></i></div>
+    <div class="fg-topbar-title">
+      Bonjour, {username} <i class="bi bi-hand-wave" style="font-size:15px;color:{AMBER};"></i>
+    </div>
     <div class="fg-topbar-sub">
-      <i class="bi bi-calendar3" style="font-size:11px;"></i> {date_str}
-      &nbsp;·&nbsp;
-      <i class="bi bi-building" style="font-size:11px;"></i> Tenant ID {tid}
+      <i class="bi bi-calendar3"></i> {date_str}
+      &nbsp;<span style="color:{BORDER_SOLID};">|</span>&nbsp;
+      <i class="bi bi-building"></i> Tenant&nbsp;{tid}
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <div style="position:relative;cursor:pointer;">
-      <i class="bi bi-bell" style="font-size:18px;color:{TEXT_MUT};"></i>
-      <span style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;
-                   background:{RED};border-radius:50%;border:2px solid {WHITE};"></span>
+    <div style="position:relative;cursor:pointer;width:36px;height:36px;
+                background:rgba(255,255,255,.05);border:1px solid {BORDER_SOLID};
+                border-radius:50%;display:flex;align-items:center;justify-content:center;">
+      <i class="bi bi-bell" style="font-size:16px;color:{TEXT_MUT};"></i>
+      <span style="position:absolute;top:6px;right:6px;width:7px;height:7px;
+                   background:{RED};border-radius:50%;border:2px solid {BG_BASE};
+                   box-shadow:0 0 6px {RED};"></span>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;
-                border:0.5px solid {BORDER};border-radius:20px;background:{WHITE};">
-      <div class="fg-avatar" style="background:{av_color};">{initials}</div>
+    <div style="display:flex;align-items:center;gap:9px;padding:6px 14px;
+                background:rgba(255,255,255,.05);
+                border:1px solid {BORDER_SOLID};border-radius:24px;
+                backdrop-filter:blur(10px);">
+      <div class="fg-avatar" style="background:linear-gradient(135deg,{av_color},{BLUE});width:28px;height:28px;font-size:11px;">{initials}</div>
       <span style="font-size:13px;color:{TEXT};font-weight:500;">{username}</span>
-      <i class="bi bi-chevron-down" style="font-size:11px;color:{TEXT_MUT};"></i>
+      <i class="bi bi-chevron-down" style="font-size:10px;color:{TEXT_MUT};"></i>
     </div>
   </div>
 </div>
@@ -695,14 +827,16 @@ if "Dashboard" in page:
             fill="tozeroy", fillcolor=_rgba(RED, 0.07),
         ))
         fig_area.update_layout(
-            height=220, margin=dict(l=0, r=0, t=4, b=0),
+            height=230, margin=dict(l=0, r=0, t=4, b=0),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            legend=dict(orientation="h", y=1.12, x=0, font=dict(size=12)),
+            legend=dict(orientation="h", y=1.12, x=0, font=dict(size=12, color=TEXT_MUT),
+                        bgcolor="rgba(0,0,0,0)"),
             xaxis=dict(showgrid=False, tickfont=dict(size=11, color=TEXT_MUT),
-                       nticks=8, showline=False, zeroline=False),
-            yaxis=dict(showgrid=True, gridcolor="#f3f4f6",
+                       nticks=8, showline=False, zeroline=False, color=TEXT_MUT),
+            yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,.05)",
                        tickfont=dict(size=11, color=TEXT_MUT), showline=False, zeroline=False),
             hovermode="x unified",
+            hoverlabel=dict(bgcolor=BG_ELEVATED, bordercolor=BORDER_SOLID, font_color=TEXT),
         )
         st.plotly_chart(fig_area, width="stretch", config={"displayModeBar": False})
 

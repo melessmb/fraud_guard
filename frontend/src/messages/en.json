@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "analytique": "Analytics",
+    "alertes": "Alerts",
+    "scoring": "Scoring",
+    "tenants": "Tenants",
+    "modeles": "ML Models",
+    "conformite": "Compliance",
+    "monTenant": "My Company",
+    "profil": "Profile"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "loading": "Signing in…",
+    "error": "Invalid credentials",
+    "subtitle": "Access your administration dashboard",
+    "secured": "Secured authentication via Keycloak"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalTransactions": "Total transactions",
+    "fraudDetected": "Fraud detected",
+    "fraudRate": "Fraud rate",
+    "activeModel": "Active model",
+    "vsLastMonth": "vs last month",
+    "recentAlerts": "Recent alerts",
+    "byChannel": "By channel",
+    "activity": "Transaction activity",
+    "legitimate": "Legitimate",
+    "fraud": "Fraud"
+  },
+  "alerts": {
+    "title": "Fraud alerts",
+    "date": "Date",
+    "transaction": "Transaction",
+    "channel": "Channel",
+    "amount": "Amount",
+    "score": "Score",
+    "status": "Status",
+    "fraud": "Fraud",
+    "review": "Review",
+    "legitimate": "Legitimate",
+    "noAlerts": "No alerts for this tenant.",
+    "filters": "Filters"
+  },
+  "scoring": {
+    "title": "Real-time scoring",
+    "analyze": "Analyze transaction",
+    "analyzing": "Analyzing…",
+    "result": "Result",
+    "riskLow": "Low",
+    "riskMedium": "Medium",
+    "riskHigh": "High",
+    "fraudDetected": "Fraud detected — transaction blocked",
+    "legitimate": "Legitimate transaction — approved",
+    "shapFactors": "Key factors (SHAP)",
+    "history": "Session history",
+    "clearHistory": "Clear"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "An error occurred",
+    "noData": "No data available",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "refresh": "Refresh",
+    "seeMore": "See more",
+    "confirm": "Confirm",
+    "back": "Back",
+    "tenantId": "Tenant ID",
+    "production": "production",
+    "sandbox": "sandbox"
+  },
+  "roles": {
+    "admin": "Platform Admin",
+    "tenant_admin": "Tenant Admin",
+    "compliance": "Compliance",
+    "tenant": "Tenant API"
+  }
+}
