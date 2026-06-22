@@ -164,6 +164,33 @@ class AlertResponse(BaseModel):
     status: str
 
 
+class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transaction_id: str
+    tenant_id: int
+    amount: float
+    currency: str
+    channel: str
+    country: str
+    score: float
+    is_fraud: bool
+    risk_level: str
+    model_version: str
+    status: str
+    created_at: datetime
+    data_expires_at: Optional[datetime] = None
+    is_anonymized: bool = False
+
+
+class TransactionListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List["TransactionResponse"]
+
+
 class ScoringHookRequest(BaseModel):
     name:       str
     hook_type:  str              # "pre_score" | "post_score"

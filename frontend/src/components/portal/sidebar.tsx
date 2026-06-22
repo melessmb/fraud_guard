@@ -7,16 +7,17 @@ import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, AlertTriangle, BarChart2, Zap,
-  FileText, Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight,
+  FileText, Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight, ArrowLeftRight,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Tableau de bord",   href: "/portal",            icon: LayoutDashboard },
-  { label: "Mes alertes",       href: "/portal/alertes",    icon: AlertTriangle },
-  { label: "Analytique",        href: "/portal/analytique", icon: BarChart2 },
-  { label: "Scoring",           href: "/portal/scoring",    icon: Zap },
-  { label: "Conformité BCEAO",  href: "/portal/conformite", icon: FileText },
-  { label: "Configuration",     href: "/portal/configuration", icon: Settings },
+  { label: "Tableau de bord",   href: "/portal",                  icon: LayoutDashboard },
+  { label: "Transactions",      href: "/portal/transactions",      icon: ArrowLeftRight },
+  { label: "Mes alertes",       href: "/portal/alertes",           icon: AlertTriangle },
+  { label: "Analytique",        href: "/portal/analytique",        icon: BarChart2 },
+  { label: "Scoring",           href: "/portal/scoring",           icon: Zap },
+  { label: "Conformité BCEAO",  href: "/portal/conformite",        icon: FileText },
+  { label: "Configuration",     href: "/portal/configuration",     icon: Settings },
 ];
 
 export function PortalSidebar() {

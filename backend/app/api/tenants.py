@@ -18,6 +18,8 @@ from app.models.schemas import (
     TenantRequest,
     TenantResponse,
     TenantUpdateRequest,
+    TransactionListResponse,
+    TransactionResponse,
     WebhookConfig,
 )
 from app.models.tenant import Tenant
@@ -243,3 +245,83 @@ async def batch_score(
 @router.get("/metrics", response_model=MetricsResponse, include_in_schema=False)
 def metrics_legacy(tenant_id: int, db: Session = Depends(get_db)) -> MetricsResponse:
     return get_tenant_metrics(tenant_id=tenant_id, db=db)
+
+
+def _risk_level(score: float) -> str:
+    if score >= 0.8:  return "critical"
+    if score >= 0.5:  return "high"
+    if score >= 0.3:  return "medium"
+    return "low"
+
+
+def _to_txn_response(row: FraudLog) -> TransactionResponse:
+    return TransactionResponse(
+        id=row.id,
+        transaction_id=row.transaction_id,
+        tenant_id=row.tenant_id,
+        amount=row.amount,
+        currency=row.currency,
+        channel=row.channel,
+        country=row.country,
+        score=row.score,
+        is_fraud=row.is_fraud,
+        risk_level=_risk_level(row.score),
+        model_version=row.model_version,
+        status=row.status,
+        created_at=row.created_at,
+        data_expires_at=row.data_expires_at,
+        is_anonymized=row.is_anonymized,
+    )
+
+
+# ── Transactions ──────────────────────────────────────────────────────────────
+
+@router.get("/tenants/{tenant_id}/transactions", response_model=TransactionListResponse)
+def list_transactions(
+    tenant_id: int,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+    risk_level: Optional[str] = Query(default=None, description="low | medium | high | critical"),
+    is_fraud: Optional[bool] = Query(default=None),
+    channel: Optional[str] = Query(default=None),
+    country: Optional[str] = Query(default=None),
+    date_from: Optional[datetime] = Query(default=None),
+    date_to: Optional[datetime] = Query(default=None),
+    db: Session = Depends(get_db),
+    _token: dict = Depends(require_admin),
+) -> TransactionListResponse:
+    q = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id)
+    if is_fraud is not None:
+        q = q.filter(FraudLog.is_fraud == is_fraud)
+    if channel:
+        q = q.filter(FraudLog.channel == channel)
+    if country:
+        q = q.filter(FraudLog.country == country)
+    if date_from:
+        q = q.filter(FraudLog.created_at >= date_from)
+    if date_to:
+        q = q.filter(FraudLog.created_at <= date_to)
+    if risk_level:
+        thresholds = {"critical": (0.8, 1.1), "high": (0.5, 0.8), "medium": (0.3, 0.5), "low": (0.0, 0.3)}
+        if risk_level in thresholds:
+            lo, hi = thresholds[risk_level]
+            q = q.filter(FraudLog.score >= lo, FraudLog.score < hi)
+    total = q.count()
+    rows = q.order_by(FraudLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return TransactionListResponse(total=total, page=page, page_size=page_size, items=[_to_txn_response(r) for r in rows])
+
+
+@router.get("/tenants/{tenant_id}/transactions/{transaction_id}", response_model=TransactionResponse)
+def get_transaction(
+    tenant_id: int,
+    transaction_id: str,
+    db: Session = Depends(get_db),
+    _token: dict = Depends(require_admin),
+) -> TransactionResponse:
+    row = db.query(FraudLog).filter(
+        FraudLog.tenant_id == tenant_id,
+        FraudLog.transaction_id == transaction_id,
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Transaction introuvable")
+    return _to_txn_response(row)

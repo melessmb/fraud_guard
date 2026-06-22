@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, BarChart2, AlertTriangle, Zap,
   Building2, Cpu, FileText, User, Settings, ShieldCheck,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ArrowLeftRight,
 } from "lucide-react";
 
 interface NavItem {
@@ -21,6 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Tableau de bord", href: "/",           icon: LayoutDashboard },
   { label: "Analytique",      href: "/analytique", icon: BarChart2 },
+  { label: "Transactions",     href: "/transactions", icon: ArrowLeftRight },
   { label: "Alertes",         href: "/alertes",    icon: AlertTriangle },
   { label: "Scoring",         href: "/scoring",    icon: Zap },
   { label: "Tenants",         href: "/tenants",    icon: Building2, roles: ["admin"] },
