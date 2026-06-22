@@ -127,6 +127,48 @@ class AlertResponse(BaseModel):
     status: str
 
 
+class ScoringHookRequest(BaseModel):
+    name:       str
+    hook_type:  str              # "pre_score" | "post_score"
+    url:        str
+    secret:     Optional[str] = None
+    timeout_ms: int = 2000
+    enabled:    bool = True
+
+
+class ScoringHookResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:         int
+    tenant_id:  int
+    name:       str
+    hook_type:  str
+    url:        str
+    timeout_ms: int
+    enabled:    bool
+    created_at: datetime
+
+
+class HookTestRequest(BaseModel):
+    transaction_id:     str = "test-txn-001"
+    amount:             float = 50000.0
+    currency:           str = "XOF"
+    channel:            str = "mobile_money"
+    country:            str = "CI"
+    device_fingerprint: str = "fp-test"
+    score:              float = 0.75          # utilisé pour post_score
+    is_fraud:           bool = True           # utilisé pour post_score
+
+
+class HookTestResponse(BaseModel):
+    hook_id:      int
+    url:          str
+    status:       str    # "success" | "timeout" | "error"
+    response_ms:  int
+    response_body: Optional[dict] = None
+    error:        Optional[str] = None
+
+
 class ModelVersionResponse(BaseModel):
     version: str
     stage: str

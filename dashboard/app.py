@@ -323,6 +323,109 @@ def _chart_cfg() -> dict:
     return {"displayModeBar": False, "staticPlot": True}
 
 
+def _render_hooks_tab(tenant_id_for_hooks: int) -> None:
+    """Composant réutilisable — gestion des scoring hooks pour un tenant."""
+    hooks_data = api_get(f"/api/v1/tenants/{tenant_id_for_hooks}/hooks") or []
+
+    pre_hooks  = [h for h in hooks_data if h.get("hook_type") == "pre_score"]
+    post_hooks = [h for h in hooks_data if h.get("hook_type") == "post_score"]
+
+    st.markdown(f"""
+    <div style="padding:12px 16px;background:{BLUE_BG};border-radius:8px;
+                border:0.5px solid #bfdbfe;margin-bottom:16px;font-size:12px;color:#1e40af;">
+      <i class="bi bi-plug"></i>
+      <strong>Scoring Hooks</strong> — Enrichissez ou modifiez le scoring ML sans toucher à la plateforme.<br>
+      <span style="color:{TEXT_MUT};margin-top:4px;display:block;">
+        <strong>pre_score</strong> : appelé avant le modèle ML — peut enrichir les données ou bloquer la transaction.<br>
+        <strong>post_score</strong> : appelé après le modèle ML — peut accepter ou overrider le score.
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Hooks existants ────────────────────────────────────────────────────────
+    for htype, label, icon, color, hooks_list in [
+        ("pre_score",  "Pre-score",  "bi-arrow-right-circle", BLUE,  pre_hooks),
+        ("post_score", "Post-score", "bi-arrow-left-circle",  AMBER, post_hooks),
+    ]:
+        st.markdown(f"""
+        <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px;">
+          <i class="bi {icon}" style="color:{color};font-size:15px;"></i>
+          <span style="font-size:13px;font-weight:600;color:{TEXT};">Hooks {label}</span>
+          <span style="font-size:11px;color:{TEXT_MUT};background:#f3f4f6;
+                        padding:1px 8px;border-radius:10px;">{len(hooks_list)}</span>
+        </div>""", unsafe_allow_html=True)
+
+        if not hooks_list:
+            st.markdown(f"<p style='font-size:12px;color:{TEXT_MUT};margin:0 0 8px;'>Aucun hook {label.lower()} configuré.</p>", unsafe_allow_html=True)
+        else:
+            for hook in hooks_list:
+                with st.container(border=True):
+                    hc1, hc2, hc3 = st.columns([3, 1, 1])
+                    status_icon = "bi-toggle-on" if hook.get("enabled") else "bi-toggle-off"
+                    status_col  = GREEN if hook.get("enabled") else TEXT_MUT
+                    hc1.markdown(f"""
+                    <div>
+                      <span style="font-size:13px;font-weight:600;">{hook.get('name','—')}</span>
+                      <i class="bi {status_icon}" style="color:{status_col};margin-left:8px;"></i>
+                    </div>
+                    <div style="font-size:11px;color:{TEXT_MUT};margin-top:3px;">
+                      <i class="bi bi-link-45deg"></i> <code>{hook.get('url','—')}</code>
+                      &nbsp;·&nbsp; timeout {hook.get('timeout_ms',2000)}ms
+                    </div>""", unsafe_allow_html=True)
+
+                    if hc2.button("Tester", key=f"test_{hook['id']}", use_container_width=True):
+                        test_res = api_post(
+                            f"/api/v1/tenants/{tenant_id_for_hooks}/hooks/{hook['id']}/test",
+                            {"transaction_id": "test-001", "amount": 50000, "currency": "XOF",
+                             "channel": "mobile_money", "country": "CI",
+                             "device_fingerprint": "fp-test", "score": 0.75, "is_fraud": True},
+                        )
+                        if test_res:
+                            if test_res.get("status") == "success":
+                                st.success(f"✓ Réponse en {test_res.get('response_ms')}ms : `{test_res.get('response_body')}`")
+                            else:
+                                st.error(f"✗ {test_res.get('error')}")
+
+                    if hc3.button("Supprimer", key=f"del_{hook['id']}", use_container_width=True):
+                        r = requests.delete(
+                            f"{st.session_state['api_url']}/api/v1/tenants/{tenant_id_for_hooks}/hooks/{hook['id']}",
+                            headers=_hdrs(), timeout=10,
+                        )
+                        if r.status_code == 204:
+                            st.success("Hook supprimé.")
+                            st.rerun()
+
+    # ── Ajouter un hook ────────────────────────────────────────────────────────
+    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+    with st.expander("➕  Ajouter un hook", expanded=False):
+        with st.form(f"form_add_hook_{tenant_id_for_hooks}", border=False):
+            nc1, nc2 = st.columns(2)
+            h_name    = nc1.text_input("Nom du hook *", placeholder="ex: Vérification KYC Ecobank")
+            h_type    = nc2.selectbox("Type *", ["pre_score", "post_score"])
+            h_url     = st.text_input("URL *", placeholder="https://api.ecobank.ci/fraudguard/hooks")
+            nc3, nc4  = st.columns(2)
+            h_timeout = nc3.number_input("Timeout (ms)", min_value=100, max_value=5000, value=2000, step=100)
+            h_secret  = nc4.text_input("Secret HMAC (optionnel)", type="password")
+            h_enabled = st.toggle("Activé", value=True)
+            st.markdown(f"""
+            <div style="font-size:11px;color:{TEXT_MUT};margin:4px 0;">
+              <i class="bi bi-shield-lock"></i> FraudGuard signera chaque requête :
+              <code>X-FraudGuard-Signature: sha256=&lt;hmac&gt;</code>
+            </div>""", unsafe_allow_html=True)
+            if st.form_submit_button("Enregistrer le hook", type="primary", use_container_width=True):
+                if not h_name or not h_url:
+                    st.error("Nom et URL sont obligatoires.")
+                else:
+                    res = api_post(f"/api/v1/tenants/{tenant_id_for_hooks}/hooks", {
+                        "name": h_name, "hook_type": h_type, "url": h_url,
+                        "timeout_ms": h_timeout, "secret": h_secret or None,
+                        "enabled": h_enabled,
+                    })
+                    if res:
+                        st.success(f"✓ Hook **{h_name}** créé.")
+                        st.rerun()
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # LOGIN
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -994,8 +1097,8 @@ elif "Tenants" in page:
 
     st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
 
-    tab_list, tab_create, tab_edit, tab_policy, tab_webhook = st.tabs(
-        ["📋 Liste", "➕ Créer", "✏️ Modifier", "⚙️ Politiques", "🔔 Webhooks"]
+    tab_list, tab_create, tab_edit, tab_policy, tab_webhook, tab_hooks = st.tabs(
+        ["📋 Liste", "➕ Créer", "✏️ Modifier", "⚙️ Politiques", "🔔 Webhooks", "🔌 Scoring Hooks"]
     )
 
     # ── Liste ─────────────────────────────────────────────────────────────────
@@ -1140,6 +1243,15 @@ elif "Tenants" in page:
                         })
                         if res:
                             st.success("✓ Politique mise à jour.")
+
+    # ── Scoring Hooks (admin) ─────────────────────────────────────────────────
+    with tab_hooks:
+        if df_t.empty:
+            st.info("Aucun tenant.")
+        else:
+            hooks_tid_options = {f"[{row['id']}] {row['name']}": row['id'] for _, row in df_t.iterrows()}
+            hooks_tid_label   = st.selectbox("Tenant", list(hooks_tid_options.keys()), key="hooks_tid_sel", label_visibility="collapsed")
+            _render_hooks_tab(hooks_tid_options[hooks_tid_label])
 
     # ── Webhooks ──────────────────────────────────────────────────────────────
     with tab_webhook:
@@ -1347,7 +1459,7 @@ elif "Mon Tenant" in page:
 
     st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
 
-    tab_info, tab_pol, tab_wh = st.tabs(["📋 Informations", "⚙️ Politiques de risque", "🔔 Webhooks"])
+    tab_info, tab_pol, tab_wh, tab_hooks = st.tabs(["📋 Informations", "⚙️ Politiques de risque", "🔔 Webhooks", "🔌 Scoring Hooks"])
 
     with tab_info:
         c1, c2 = st.columns(2)
@@ -1424,7 +1536,12 @@ elif "Mon Tenant" in page:
                         res = api_post(f"/api/v1/tenants/{tenant_id_me}/webhooks",
                                        {"url": wh_url, "events": wh_events, "secret": wh_secret or None})
                         if res:
-                            st.success(f"✓ Webhook configuré.")
+                            st.success("✓ Webhook configuré.")
+
+    # ── Scoring Hooks ─────────────────────────────────────────────────────────
+    with tab_hooks:
+        _render_hooks_tab(tenant_id_me)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 

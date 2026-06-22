@@ -17,8 +17,13 @@ def _derive_velocity_features(event: FraudEvent) -> Dict[str, Any]:
     }
 
 
-def evaluate_risk(event: FraudEvent) -> Dict[str, Any]:
+def evaluate_risk(event: FraudEvent, extra_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
     features = _derive_velocity_features(event)
+    # Injecte les features customs fournies par les pre-score hooks
+    if extra_context:
+        for k, v in extra_context.items():
+            if isinstance(v, (int, float)):
+                features[k] = v
     try:
         from app.ml.serve import predict
         return predict(features)
