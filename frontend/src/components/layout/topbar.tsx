@@ -1,9 +1,10 @@
 "use client";
 
-import { Bell, Sun, Moon, Globe, LogOut } from "lucide-react";
+import { Sun, Moon, Globe, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -75,11 +76,8 @@ export function Topbar({ title, subtitle }: TopbarProps) {
           {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </Button>
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500" />
-        </Button>
+        {/* Notifications temps réel */}
+        <NotificationBell />
 
         {/* Separator */}
         <div className="w-px h-6 bg-border mx-1" />

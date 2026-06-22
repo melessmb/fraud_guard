@@ -2,6 +2,18 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSSE } from "@/lib/hooks/use-sse";
+import { AlertToastContainer } from "@/components/notifications/alert-toast";
+
+function SSEProvider({ children }: { children: React.ReactNode }) {
+  useSSE();
+  return (
+    <>
+      {children}
+      <AlertToastContainer />
+    </>
+  );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -19,7 +31,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <SSEProvider>
+        {children}
+      </SSEProvider>
     </QueryClientProvider>
   );
 }

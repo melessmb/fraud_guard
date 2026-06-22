@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_tenant
 from app.core.cache import check_rate_limit
 from app.core.database import get_db
+from app.core.pubsub import publish_fraud_alert
 from app.models.fraud_log import FraudLog
 from app.models.schemas import FraudEvent, FraudScoreResponse
 from app.models.tenant import Tenant
@@ -47,4 +48,21 @@ async def score_transaction_endpoint(
         status="open" if result.is_fraud else "reviewed",
     ))
     db.commit()
+
+    # Notifier les clients SSE connectés si c'est une fraude
+    if result.is_fraud:
+        score_val = result.score
+        risk = "critical" if score_val >= 0.8 else "high" if score_val >= 0.5 else "medium" if score_val >= 0.3 else "low"
+        await publish_fraud_alert(tenant.id, {
+            "transaction_id": event.transaction_id,
+            "score": score_val,
+            "risk_level": risk,
+            "amount": event.amount,
+            "currency": event.currency,
+            "channel": event.channel,
+            "country": event.country,
+            "model_version": result.model_version,
+            "timestamp": event.timestamp.isoformat(),
+        })
+
     return result
