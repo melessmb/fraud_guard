@@ -262,6 +262,42 @@ class ModelVersionResponse(BaseModel):
     description: str = ""
 
 
+class DailyPoint(BaseModel):
+    date:  str
+    total: int
+    fraud: int
+
+class ChannelStat(BaseModel):
+    channel: str
+    total:   int
+    fraud:   int
+
+class CountryStat(BaseModel):
+    country: str
+    total:   int
+    fraud:   int
+
+class ScoreBucket(BaseModel):
+    bucket: str
+    count:  int
+
+class PeriodSummary(BaseModel):
+    total:      int
+    fraud:      int
+    fraud_rate: float
+    avg_score:  float
+
+class AnalyticsResponse(BaseModel):
+    period_days: int
+    current:    PeriodSummary
+    previous:   PeriodSummary
+    by_day:     List[DailyPoint]
+    by_channel: List[ChannelStat]
+    by_risk:    Dict[str, int]
+    by_country: List[CountryStat]
+    score_distribution: List[ScoreBucket]
+
+
 class AuditLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

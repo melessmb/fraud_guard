@@ -12,6 +12,7 @@ from app.models.fraud_log import FraudLog
 from app.models.schemas import (
     AlertResponse,
     AlertStatusUpdate,
+    AnalyticsResponse,
     BatchEventRequest,
     FraudScoreResponse,
     MetricsResponse,
@@ -166,6 +167,113 @@ def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=1
         false_positive_rate=0.0,
         model_version="v1-lgbm",
         tenant_id=tenant_id,
+    )
+
+
+@router.get("/tenants/{tenant_id}/analytics", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
+def get_tenant_analytics(
+    tenant_id: int,
+    days: int = Query(default=30, ge=7, le=365),
+    db: Session = Depends(get_db),
+) -> AnalyticsResponse:
+    """Données agrégées pour le dashboard enrichi."""
+    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+
+    now        = datetime.utcnow()
+    cur_start  = now - timedelta(days=days)
+    prev_start = cur_start - timedelta(days=days)
+
+    def _load(since: datetime, until: datetime) -> list:
+        return (db.query(FraudLog)
+                .filter(FraudLog.tenant_id == tenant_id,
+                        FraudLog.created_at >= since,
+                        FraudLog.created_at < until)
+                .order_by(FraudLog.created_at)
+                .yield_per(500)
+                .all())
+
+    current_logs  = _load(cur_start, now)
+    previous_logs = _load(prev_start, cur_start)
+
+    def _summary(logs: list) -> dict:
+        total = len(logs)
+        fraud = sum(1 for l in logs if l.is_fraud)
+        avg   = sum(l.score for l in logs) / total if total else 0.0
+        return {"total": total, "fraud": fraud,
+                "fraud_rate": fraud / total if total else 0.0,
+                "avg_score": round(avg, 4)}
+
+    # By day (current period)
+    day_map: dict = {}
+    for l in current_logs:
+        key = l.created_at.strftime("%Y-%m-%d")
+        if key not in day_map:
+            day_map[key] = {"total": 0, "fraud": 0}
+        day_map[key]["total"] += 1
+        if l.is_fraud:
+            day_map[key]["fraud"] += 1
+    by_day = [{"date": d, "total": v["total"], "fraud": v["fraud"]}
+              for d, v in sorted(day_map.items())]
+
+    # By channel
+    ch_map: dict = {}
+    for l in current_logs:
+        ch = (l.channel or "unknown").lower()
+        if ch not in ch_map:
+            ch_map[ch] = {"total": 0, "fraud": 0}
+        ch_map[ch]["total"] += 1
+        if l.is_fraud:
+            ch_map[ch]["fraud"] += 1
+    by_channel = sorted(
+        [{"channel": k, **v} for k, v in ch_map.items()],
+        key=lambda x: x["total"], reverse=True,
+    )
+
+    # By risk level
+    by_risk = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for l in current_logs:
+        if l.score >= 0.8:   by_risk["critical"] += 1
+        elif l.score >= 0.5: by_risk["high"]     += 1
+        elif l.score >= 0.3: by_risk["medium"]   += 1
+        else:                by_risk["low"]       += 1
+
+    # Top 10 countries
+    co_map: dict = {}
+    for l in current_logs:
+        cc = l.country or "N/A"
+        if cc not in co_map:
+            co_map[cc] = {"total": 0, "fraud": 0}
+        co_map[cc]["total"] += 1
+        if l.is_fraud:
+            co_map[cc]["fraud"] += 1
+    by_country = sorted(
+        [{"country": k, **v} for k, v in co_map.items()],
+        key=lambda x: x["fraud"], reverse=True,
+    )[:10]
+
+    # Score distribution (5 buckets)
+    buckets = [
+        ("0–20%",  0.0,  0.2),
+        ("20–40%", 0.2,  0.4),
+        ("40–60%", 0.4,  0.6),
+        ("60–80%", 0.6,  0.8),
+        ("80–100%",0.8,  1.01),
+    ]
+    score_dist = []
+    for label, lo, hi in buckets:
+        score_dist.append({"bucket": label,
+                           "count": sum(1 for l in current_logs if lo <= l.score < hi)})
+
+    return AnalyticsResponse(
+        period_days=days,
+        current=_summary(current_logs),
+        previous=_summary(previous_logs),
+        by_day=by_day,
+        by_channel=by_channel,
+        by_risk=by_risk,
+        by_country=by_country,
+        score_distribution=score_dist,
     )
 
 
