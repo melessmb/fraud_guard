@@ -2,25 +2,30 @@
 
 import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/stores/auth.store";
+import { useAppStore } from "@/lib/stores/app.store";
 import { useNotificationsStore } from "@/lib/stores/notifications.store";
 
 const MAX_RETRY_MS = 30_000;
 
 export function useSSE() {
   const { token, user, isAuthenticated } = useAuthStore();
+  const { activeTenantId } = useAppStore();
   const { addNotification } = useNotificationsStore();
   const esRef = useRef<EventSource | null>(null);
   const retryDelay = useRef(1_000);
 
+  // tenant_admin: tenant vient du JWT — admin: tenant vient du store (tenant actif)
+  const tenantId = user?.tenantId ?? activeTenantId;
+
   useEffect(() => {
-    if (!isAuthenticated || !token || !user?.tenantId) return;
+    if (!isAuthenticated || !token || !tenantId) return;
 
     let cancelled = false;
 
     const connect = () => {
       if (cancelled) return;
 
-      const url = `/api/v1/events/stream?token=${encodeURIComponent(token)}&tenant_id=${user.tenantId}`;
+      const url = `/api/v1/events/stream?token=${encodeURIComponent(token)}&tenant_id=${tenantId}`;
       const es = new EventSource(url);
       esRef.current = es;
 
@@ -61,5 +66,5 @@ export function useSSE() {
       esRef.current?.close();
       esRef.current = null;
     };
-  }, [isAuthenticated, token, user?.tenantId, addNotification]);
+  }, [isAuthenticated, token, tenantId, addNotification]);
 }
