@@ -50,9 +50,12 @@ export default function LoginPage() {
         username: (payload.preferred_username as string) || username,
         email:    (payload.email as string) || "",
         roles:    ((payload as any).realm_access?.roles ?? []) as UserRole[],
+        tenantId: (payload as any).tenant_id as number | undefined,
       };
       setUser(userInfo, data.access_token);
-      router.push("/");
+      // Redirection selon le rôle : tenant_admin → portail client, autres → dashboard admin
+      const isTenantAdmin = userInfo.roles.includes("tenant_admin") && !userInfo.roles.includes("admin");
+      router.push(isTenantAdmin ? "/portal" : "/");
     } catch {
       setError("Erreur de connexion. Vérifiez que l'API est accessible.");
     } finally {

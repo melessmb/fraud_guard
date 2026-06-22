@@ -8,6 +8,7 @@ export interface UserInfo {
   username: string;
   email: string;
   roles: UserRole[];
+  tenantId?: number;  // présent pour les rôles tenant_admin / tenant
 }
 
 interface AuthState {
