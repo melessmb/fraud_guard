@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import { useTranslations } from "next-intl";
 import {
   LayoutDashboard, BarChart2, AlertTriangle, Zap,
   Building2, Cpu, FileText, User, Settings, ShieldCheck,
@@ -13,27 +12,26 @@ import {
 } from "lucide-react";
 
 interface NavItem {
-  key: string;
+  label: string;
   href: string;
   icon: React.ElementType;
   roles?: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "dashboard",  href: "/",             icon: LayoutDashboard },
-  { key: "analytique", href: "/analytique",   icon: BarChart2 },
-  { key: "alertes",    href: "/alertes",      icon: AlertTriangle },
-  { key: "scoring",    href: "/scoring",      icon: Zap },
-  { key: "tenants",    href: "/tenants",      icon: Building2,  roles: ["admin"] },
-  { key: "modeles",    href: "/modeles",      icon: Cpu,        roles: ["admin"] },
-  { key: "conformite", href: "/conformite",   icon: FileText,   roles: ["admin", "tenant_admin", "compliance"] },
-  { key: "monTenant",  href: "/mon-tenant",   icon: Settings,   roles: ["tenant_admin"] },
-  { key: "profil",     href: "/profil",       icon: User },
+  { label: "Tableau de bord", href: "/",           icon: LayoutDashboard },
+  { label: "Analytique",      href: "/analytique", icon: BarChart2 },
+  { label: "Alertes",         href: "/alertes",    icon: AlertTriangle },
+  { label: "Scoring",         href: "/scoring",    icon: Zap },
+  { label: "Tenants",         href: "/tenants",    icon: Building2, roles: ["admin"] },
+  { label: "Modèles",         href: "/modeles",    icon: Cpu,       roles: ["admin"] },
+  { label: "Conformité",      href: "/conformite", icon: FileText,  roles: ["admin", "tenant_admin", "compliance"] },
+  { label: "Mon Tenant",      href: "/mon-tenant", icon: Settings,  roles: ["tenant_admin"] },
+  { label: "Profil",          href: "/profil",     icon: User },
 ];
 
 export function Sidebar() {
-  const pathname  = usePathname();
-  const t         = useTranslations("nav");
+  const pathname = usePathname();
   const { user, primaryRole } = useAuthStore();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
 
@@ -74,7 +72,7 @@ export function Sidebar() {
           const Icon = item.icon;
           return (
             <Link
-              key={item.key}
+              key={item.href}
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group",
@@ -82,7 +80,7 @@ export function Sidebar() {
                   ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
-              title={sidebarCollapsed ? t(item.key as any) : undefined}
+              title={sidebarCollapsed ? item.label : undefined}
             >
               <Icon
                 className={cn(
@@ -90,9 +88,7 @@ export function Sidebar() {
                   isActive ? "text-green-600 dark:text-green-400" : "text-muted-foreground group-hover:text-foreground"
                 )}
               />
-              {!sidebarCollapsed && (
-                <span className="truncate">{t(item.key as any)}</span>
-              )}
+              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
               {isActive && !sidebarCollapsed && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-green-500" />
               )}
@@ -103,20 +99,14 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-2 py-3 border-t border-border space-y-1">
-        {/* API Status */}
         {!sidebarCollapsed && (
           <div className="px-3 py-2 rounded-lg bg-secondary/50 flex items-center gap-2">
             <span className="status-dot status-online" />
             <span className="text-xs text-muted-foreground">API en ligne</span>
           </div>
         )}
-
-        {/* User */}
         {user && (
-          <div className={cn(
-            "px-3 py-2 rounded-lg flex items-center gap-2",
-            sidebarCollapsed ? "justify-center" : ""
-          )}>
+          <div className={cn("px-3 py-2 rounded-lg flex items-center gap-2", sidebarCollapsed ? "justify-center" : "")}>
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
               {user.username.slice(0, 2).toUpperCase()}
             </div>
@@ -128,8 +118,6 @@ export function Sidebar() {
             )}
           </div>
         )}
-
-        {/* Collapse toggle */}
         <button
           onClick={toggleSidebar}
           className="w-full flex items-center justify-center px-3 py-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

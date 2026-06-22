@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import createMiddleware from "next-intl/middleware";
-
-// localePrefix: "never" — locale detected from cookie/browser but never added to URLs
-// This avoids /en/login 404s — all routes are always /login, /, /alertes, etc.
-const intlMiddleware = createMiddleware({
-  locales: ["fr", "en"],
-  defaultLocale: "fr",
-  localePrefix: "never",
-});
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("fg_token")?.value;
+
+  // Skip static files and API routes
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
+  }
 
   const isLoginPage = pathname === "/login";
 
@@ -22,14 +22,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Already logged in and visiting /login → dashboard
+  // Already logged in → skip login page
   if (isLoginPage && token) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return intlMiddleware(request);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
