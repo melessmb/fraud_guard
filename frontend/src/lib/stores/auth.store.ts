@@ -8,12 +8,12 @@ export interface UserInfo {
   username: string;
   email: string;
   roles: UserRole[];
-  tenantId?: number;  // présent pour les rôles tenant_admin / tenant
+  tenantId?: number;
 }
 
 interface AuthState {
   user: UserInfo | null;
-  token: string | null;           // in-memory only — NOT persisted to localStorage
+  token: string | null;
   isAuthenticated: boolean;
   setUser: (user: UserInfo, token: string) => void;
   clearUser: () => void;
@@ -29,7 +29,6 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setUser: (user, token) => {
-        // Token stored only in sessionStorage (cleared on tab close, not readable cross-origin)
         if (typeof window !== "undefined") {
           sessionStorage.setItem("fg_token_session", token);
         }
@@ -58,17 +57,20 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "fg-auth",
-      // Token intentionnellement exclu du persist localStorage (risque XSS)
-      // Seuls user et isAuthenticated sont persistés pour la UX (profil, rôles UI)
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        // Restaurer le token depuis sessionStorage après rehydration
-        if (state && typeof window !== "undefined") {
-          const stored = sessionStorage.getItem("fg_token_session");
-          if (stored) state.token = stored;
+        // state.token = x ne suffit pas — il faut appeler setState pour
+        // que useAuthStore.getState().token retourne la bonne valeur
+        if (typeof window === "undefined") return;
+        const stored = sessionStorage.getItem("fg_token_session");
+        if (stored) {
+          // Appel différé pour éviter une mutation pendant la rehydration
+          setTimeout(() => {
+            useAuthStore.setState({ token: stored });
+          }, 0);
         }
       },
     }
