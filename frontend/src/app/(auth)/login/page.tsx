@@ -53,8 +53,8 @@ export default function LoginPage() {
         tenantId: (payload as any).tenant_id as number | undefined,
       };
       setUser(userInfo, data.access_token);
-      // Cookie de présence pour le middleware (pas le token en clair)
-      document.cookie = "fg_token=1; path=/; SameSite=Lax";
+      // fg_token httpOnly est déjà posé par la route /api/auth/login (Set-Cookie serveur).
+      // Le middleware le lit et injecte Authorization: Bearer. Pas besoin d'un cookie JS ici.
       // Redirection selon le rôle : tenant_admin → portail client, autres → dashboard admin
       const isTenantAdmin = userInfo.roles.includes("tenant_admin") && !userInfo.roles.includes("admin");
       router.push(isTenantAdmin ? "/portal" : "/");
