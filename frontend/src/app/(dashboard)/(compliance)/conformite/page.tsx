@@ -27,7 +27,7 @@ export default function ConformitePage() {
     queryKey: ["compliance-report", activeTenantId, fromDate, toDate],
     queryFn: async () => {
       const p = new URLSearchParams({ from_date: fromDate, to_date: toDate, tenant_id: String(activeTenantId) });
-      const res = await fetch(`/api/v1/compliance/report?${p}`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/compliance/report?${p}`);
       if (!res.ok) throw new Error("Erreur rapport");
       return res.json();
     },
@@ -37,7 +37,7 @@ export default function ConformitePage() {
     queryKey: ["audit-log", activeTenantId],
     queryFn: async () => {
       const p = new URLSearchParams({ limit: "20", tenant_id: String(activeTenantId) });
-      const res = await fetch(`/api/v1/compliance/audit-log?${p}`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/compliance/audit-log?${p}`);
       if (!res.ok) return { total: 0, rows: [] };
       return res.json();
     },

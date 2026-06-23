@@ -41,6 +41,7 @@ export function Topbar({ title, subtitle }: TopbarProps) {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    document.cookie = "fg_token=; path=/; max-age=0";
     clearUser();
     router.push("/login");
   };

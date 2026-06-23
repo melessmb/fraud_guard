@@ -53,6 +53,8 @@ export default function LoginPage() {
         tenantId: (payload as any).tenant_id as number | undefined,
       };
       setUser(userInfo, data.access_token);
+      // Cookie de présence pour le middleware (pas le token en clair)
+      document.cookie = "fg_token=1; path=/; SameSite=Lax";
       // Redirection selon le rôle : tenant_admin → portail client, autres → dashboard admin
       const isTenantAdmin = userInfo.roles.includes("tenant_admin") && !userInfo.roles.includes("admin");
       router.push(isTenantAdmin ? "/portal" : "/");

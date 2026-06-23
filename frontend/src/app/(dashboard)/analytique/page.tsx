@@ -70,7 +70,7 @@ export default function AnalytiquePage() {
   const { data: metrics } = useQuery({
     queryKey: ["metrics", activeTenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${activeTenantId}/metrics`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/tenants/${activeTenantId}/metrics`);
       if (!res.ok) return null;
       return res.json();
     },
