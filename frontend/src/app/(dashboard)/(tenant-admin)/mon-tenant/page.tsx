@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { formatDate } from "@/lib/utils";
-import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight, Key, Copy, AlertTriangle, RefreshCw, ShieldOff, Users, UserPlus, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight, Key, Copy, AlertTriangle, RefreshCw, ShieldOff, Users, UserPlus, Mail, Eye, EyeOff, ShieldCheck, Lock, LayoutDashboard, BarChart2, Zap, FileText, ArrowLeftRight, Download } from "lucide-react";
 import type { TenantResponse, PolicyConfig, ScoringHookResponse } from "@/types/api";
 
 // ── API Key section ───────────────────────────────────────────────────────────
@@ -533,6 +533,111 @@ function HooksSection({ tenantId }: { tenantId: number }) {
   );
 }
 
+// ── Permissions section ────────────────────────────────────────────────────────
+const PAGE_ICON_MAP: Record<string, React.ElementType> = {
+  LayoutDashboard, AlertTriangle, BarChart2, Zap, FileText, ArrowLeftRight, Download,
+};
+
+const ROLE_LABELS_PERM: Record<string, string> = {
+  tenant_admin: "Admin tenant",
+  compliance:   "Compliance",
+  tenant:       "Utilisateur",
+};
+
+interface PermPage { key: string; label: string; icon: string; perms: Record<string, boolean>; }
+
+function PermissionsSection({ tenantId }: { tenantId: number }) {
+  const qc = useQueryClient();
+  const ROLES = ["tenant_admin", "compliance", "tenant"];
+
+  const { data, isLoading } = useQuery<{ pages: PermPage[] }>({
+    queryKey: ["permissions", tenantId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/admin/tenants/${tenantId}/permissions`);
+      if (!res.ok) throw new Error("Erreur permissions");
+      return res.json();
+    },
+    enabled: tenantId > 0,
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ page_key, role, allowed }: { page_key: string; role: string; allowed: boolean }) => {
+      const res = await apiFetch(`/api/v1/admin/tenants/${tenantId}/permissions`, {
+        method: "PUT",
+        body: JSON.stringify({ page_key, role, allowed }),
+      });
+      if (!res.ok && res.status !== 204) throw new Error("Erreur");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["permissions", tenantId] }),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Lock className="w-4 h-4" />Permissions des pages</CardTitle>
+        <p className="text-xs text-muted-foreground mt-0.5">Contrôlez quelles pages chaque rôle peut consulter dans ce tenant.</p>
+      </CardHeader>
+      <CardContent className="px-0 pb-0">
+        {isLoading ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">Chargement…</div>
+        ) : !data ? null : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Page</th>
+                  {ROLES.map(r => (
+                    <th key={r} className="px-5 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {ROLE_LABELS_PERM[r]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.pages.map(page => {
+                  const Icon = PAGE_ICON_MAP[page.icon] ?? Lock;
+                  return (
+                    <tr key={page.key} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{page.label}</span>
+                        </div>
+                      </td>
+                      {ROLES.map(role => {
+                        const allowed = page.perms[role] ?? true;
+                        return (
+                          <td key={role} className="px-5 py-3 text-center">
+                            <button
+                              onClick={() => toggleMutation.mutate({ page_key: page.key, role, allowed: !allowed })}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${
+                                allowed ? "bg-green-500" : "bg-muted-foreground/30"
+                              }`}
+                              title={allowed ? "Accès autorisé — cliquer pour bloquer" : "Accès bloqué — cliquer pour autoriser"}
+                            >
+                              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                allowed ? "translate-x-4" : "translate-x-1"
+                              }`} />
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="text-xs text-muted-foreground px-5 py-3">
+              <Lock className="w-3 h-3 inline mr-1" />
+              Les rôles <strong>admin</strong> et <strong>tenant_admin</strong> ont toujours accès à toutes leurs pages.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function MonTenantPage() {
   const { user } = useAuthStore();
@@ -576,6 +681,7 @@ export default function MonTenantPage() {
 
         <ApiKeySection tenantId={activeTenantId} />
         <UsersSection tenantId={activeTenantId} />
+        <PermissionsSection tenantId={activeTenantId} />
         <PolicySection tenantId={activeTenantId} />
         <HooksSection tenantId={activeTenantId} />
 
