@@ -16,8 +16,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Skip other Next.js internals and static files
-  if (pathname.startsWith("/_next") || pathname.includes(".")) {
+  // Skip Next.js internals, static files, and Next.js API routes (/api/auth/*)
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.includes(".")
+  ) {
     return NextResponse.next();
   }
 
