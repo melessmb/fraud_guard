@@ -37,6 +37,9 @@ def _apply_migrations() -> None:
         "ALTER TABLE tenants ALTER COLUMN api_key DROP NOT NULL",
         # SHAP values stockées par alerte
         "ALTER TABLE fraud_logs ADD COLUMN IF NOT EXISTS explanations JSONB",
+        # tenant_id sur audit_logs pour le scoping par tenant
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS tenant_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_audit_logs_tenant_id ON audit_logs (tenant_id)",
     ]
     with _engine.connect() as conn:
         for stmt in migrations:
