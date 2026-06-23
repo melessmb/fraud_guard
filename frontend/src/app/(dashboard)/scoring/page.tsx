@@ -23,7 +23,12 @@ interface ScoreResult {
   score: number;
   is_fraud: boolean;
   model_version: string;
-  explanations?: Record<string, number>;
+  explanations?: {
+    shap_values?: Record<string, number>;
+    base_value?: number;
+    model_auc?: number;
+    [key: string]: unknown;
+  } | null;
   timestamp: string;
 }
 
@@ -92,8 +97,8 @@ export default function ScoringPage() {
   });
 
   const latest = history[0];
-  const shapData = latest?.explanations
-    ? Object.entries(latest.explanations)
+  const shapData = latest?.explanations?.shap_values
+    ? Object.entries(latest.explanations.shap_values)
         .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
         .slice(0, 8)
         .map(([k, v]) => ({ name: k, value: parseFloat((v as number).toFixed(4)) }))
