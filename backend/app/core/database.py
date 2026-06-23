@@ -35,6 +35,8 @@ def _apply_migrations() -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_tenants_keycloak_id ON tenants (keycloak_id)",
         # api_key devient nullable (migration douce — pas de DROP)
         "ALTER TABLE tenants ALTER COLUMN api_key DROP NOT NULL",
+        # SHAP values stockées par alerte
+        "ALTER TABLE fraud_logs ADD COLUMN IF NOT EXISTS explanations JSONB",
     ]
     with _engine.connect() as conn:
         for stmt in migrations:

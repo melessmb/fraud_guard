@@ -288,6 +288,7 @@ def _to_alert_response(l: FraudLog) -> AlertResponse:
         score=score, risk_level=risk, channel=l.channel, country=l.country,
         amount=l.amount, currency=l.currency, model_version=l.model_version,
         timestamp=l.created_at, status=l.status,
+        explanations=l.explanations,
     )
 
 

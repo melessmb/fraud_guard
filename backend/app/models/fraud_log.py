@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, JSON, String
 
 from app.core.database import Base
 
@@ -27,3 +27,5 @@ class FraudLog(Base):
     # Conformité BCEAO : rétention 5 ans — Instruction n°008-05-2015
     data_expires_at = Column(DateTime, default=_data_expires_at, nullable=True)
     is_anonymized = Column(Boolean, default=False, nullable=False)
+    # SHAP values + base_value stockés pour affichage dans le drawer
+    explanations = Column(JSON, nullable=True)

@@ -4,8 +4,15 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import {
   X, ShieldAlert, CheckCircle, Clock, XCircle,
-  Hash, DollarSign, Smartphone, Globe, Cpu, Calendar,
+  Hash, DollarSign, Smartphone, Globe, Cpu, Calendar, Sparkles,
 } from "lucide-react";
+
+export interface ShapExplanations {
+  shap_values: Record<string, number>;
+  base_value: number;
+  model_auc?: number;
+  note?: string;
+}
 
 export interface AlertDetail {
   id: number;
@@ -20,6 +27,14 @@ export interface AlertDetail {
   model_version: string;
   timestamp: string;
   status: string;
+  explanations?: {
+    shap_values?: Record<string, number>;
+    base_value?: number;
+    model_auc?: number;
+    note?: string;
+    hook_override?: Record<string, unknown>;
+    hook_context?: Record<string, unknown>;
+  } | null;
 }
 
 interface Props {
@@ -49,6 +64,74 @@ const ACTIONS = [
   { status: "open",         label: "Rouvrir",           icon: ShieldAlert, style: "border border-border text-foreground hover:bg-accent" },
 ];
 
+// Human-readable feature names
+const FEATURE_LABELS: Record<string, string> = {
+  amount_log:   "Montant (log)",
+  hour:         "Heure de la transaction",
+  channel_enc:  "Canal",
+  country_enc:  "Pays",
+  velocity_1h:  "Vélocité 1h",
+  velocity_24h: "Vélocité 24h",
+  device_known: "Appareil connu",
+  is_night:     "Transaction nocturne",
+};
+
+function ShapChart({ shap_values, base_value }: { shap_values: Record<string, number>; base_value: number }) {
+  const entries = Object.entries(shap_values)
+    .map(([k, v]) => ({ key: k, label: FEATURE_LABELS[k] ?? k, value: v }))
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+
+  const maxAbs = Math.max(...entries.map(e => Math.abs(e.value)), 0.01);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+        <span>← réduit la fraude</span>
+        <span>augmente la fraude →</span>
+      </div>
+      {entries.map(({ key, label, value }) => {
+        const pct = Math.abs(value) / maxAbs * 100;
+        const isPositive = value >= 0;
+        return (
+          <div key={key} className="flex items-center gap-2 group">
+            <span className="text-[11px] text-muted-foreground w-36 shrink-0 truncate group-hover:text-foreground transition-colors" title={label}>
+              {label}
+            </span>
+            <div className="flex-1 flex items-center gap-1 h-5">
+              {/* Barre négative (réduit) */}
+              <div className="flex-1 flex justify-end">
+                {!isPositive && (
+                  <div
+                    className="h-3.5 rounded-l bg-green-400 dark:bg-green-500 transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                )}
+              </div>
+              {/* Ligne centrale */}
+              <div className="w-px h-4 bg-border shrink-0" />
+              {/* Barre positive (augmente) */}
+              <div className="flex-1">
+                {isPositive && (
+                  <div
+                    className="h-3.5 rounded-r bg-red-400 dark:bg-red-500 transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                )}
+              </div>
+            </div>
+            <span className={`text-[11px] font-mono w-14 text-right shrink-0 ${isPositive ? "text-red-500" : "text-green-600"}`}>
+              {value >= 0 ? "+" : ""}{value.toFixed(3)}
+            </span>
+          </div>
+        );
+      })}
+      <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">
+        Valeur de base (prior) : <span className="font-mono">{base_value.toFixed(3)}</span>
+      </p>
+    </div>
+  );
+}
+
 export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -59,6 +142,11 @@ export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
   const risk = RISK_STYLE[alert.risk_level] ?? RISK_STYLE.high;
   const statusInfo = STATUS_META[alert.status] ?? STATUS_META.open;
   const StatusIcon = statusInfo.icon;
+
+  const shap = alert.explanations?.shap_values;
+  const baseValue = alert.explanations?.base_value ?? 0;
+  const modelAuc = alert.explanations?.model_auc;
+  const hasShap = shap && Object.keys(shap).length > 0 && !alert.explanations?.note;
 
   const handleAction = async (newStatus: string) => {
     setLoading(newStatus);
@@ -116,9 +204,16 @@ export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
               </div>
               <span className="text-2xl font-bold text-foreground tabular-nums">{(alert.score * 100).toFixed(1)}%</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Score calculé par le modèle <span className="font-mono">{alert.model_version}</span>
-            </p>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-muted-foreground">
+                Modèle <span className="font-mono">{alert.model_version}</span>
+              </p>
+              {modelAuc && (
+                <p className="text-xs text-muted-foreground">
+                  AUC-ROC <span className="font-mono font-semibold">{(modelAuc * 100).toFixed(1)}%</span>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Détails */}
@@ -141,6 +236,28 @@ export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* SHAP Explainability */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Explainabilité IA — SHAP
+              </h3>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4">
+              {hasShap ? (
+                <ShapChart shap_values={shap!} base_value={baseValue} />
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                  <Cpu className="w-3.5 h-3.5 shrink-0" />
+                  {alert.explanations?.note === "shap_unavailable"
+                    ? "Explications SHAP indisponibles (modèle heuristique)"
+                    : "Aucune donnée d'explainabilité pour cette alerte"}
+                </div>
+              )}
             </div>
           </div>
 

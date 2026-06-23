@@ -165,6 +165,7 @@ class AlertResponse(BaseModel):
     model_version: str
     timestamp: datetime
     status: str  # open | under_review | validated | rejected
+    explanations: Optional[Dict[str, Any]] = None
 
 
 class AlertStatusUpdate(BaseModel):
