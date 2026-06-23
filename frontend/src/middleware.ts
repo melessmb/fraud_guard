@@ -4,12 +4,20 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("fg_token")?.value;
 
-  // Skip static files and API routes
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".")
-  ) {
+  // Inject Authorization header from httpOnly cookie for all /api/v1/* requests.
+  // This runs before the rewrite proxies the request to the FastAPI backend,
+  // so the backend always receives a proper Bearer token regardless of Zustand state.
+  if (pathname.startsWith("/api/v1/")) {
+    if (token) {
+      const headers = new Headers(request.headers);
+      headers.set("Authorization", `Bearer ${token}`);
+      return NextResponse.next({ request: { headers } });
+    }
+    return NextResponse.next();
+  }
+
+  // Skip other Next.js internals and static files
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
