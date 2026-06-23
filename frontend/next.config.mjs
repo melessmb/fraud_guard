@@ -2,6 +2,15 @@
 const nextConfig = {
   output: "standalone",
 
+  // Désactive le keep-alive sur les connexions proxy vers le backend.
+  // Sans ça, Next.js réutilise les connexions TCP du pool HTTP. Quand une
+  // connexion SSE (/events/stream) se ferme côté API, le pool la marque
+  // encore valide. La requête suivante (ex: POST /score) tente de la réutiliser
+  // → ECONNRESET → HTTP 500 côté browser.
+  httpAgentOptions: {
+    keepAlive: false,
+  },
+
   async rewrites() {
     return [
       {
