@@ -11,8 +11,151 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { formatDate } from "@/lib/utils";
-import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight } from "lucide-react";
+import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight, Key, Copy, AlertTriangle, RefreshCw, ShieldOff } from "lucide-react";
 import type { TenantResponse, PolicyConfig, ScoringHookResponse } from "@/types/api";
+
+// ── API Key section ───────────────────────────────────────────────────────────
+function ApiKeySection({ tenantId }: { tenantId: number }) {
+  const qc = useQueryClient();
+  const [plainKey, setPlainKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+
+  const { data: status } = useQuery<{ has_key: boolean }>({
+    queryKey: ["api-key-status", tenantId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/api-key/status`);
+      if (!res.ok) return { has_key: false };
+      return res.json();
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/api-key`, { method: "POST" });
+      if (!res.ok) throw new Error("Erreur lors de la génération");
+      return res.json() as Promise<{ api_key: string }>;
+    },
+    onSuccess: (data) => {
+      setPlainKey(data.api_key);
+      qc.invalidateQueries({ queryKey: ["api-key-status", tenantId] });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/api-key`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Erreur lors de la révocation");
+    },
+    onSuccess: () => {
+      setPlainKey(null);
+      setConfirmRevoke(false);
+      qc.invalidateQueries({ queryKey: ["api-key-status", tenantId] });
+    },
+  });
+
+  const copyKey = async () => {
+    if (!plainKey) return;
+    await navigator.clipboard.writeText(plainKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const hasKey = status?.has_key ?? false;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Key className="w-4 h-4" />
+          API Key
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+
+        {/* Status badge */}
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${hasKey ? "bg-green-500" : "bg-muted-foreground"}`} />
+          <span className="text-sm text-foreground font-medium">
+            {hasKey ? "Clé active" : "Aucune clé configurée"}
+          </span>
+          {hasKey && (
+            <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded">
+              fg_••••••••••••••••
+            </span>
+          )}
+        </div>
+
+        {/* Revealed key (shown only once after generation) */}
+        {plainKey && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <p className="text-xs font-semibold">Copiez cette clé maintenant — elle ne sera plus affichée</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono bg-background border border-border rounded-lg px-3 py-2 break-all text-foreground">
+                {plainKey}
+              </code>
+              <button onClick={copyKey}
+                className={`shrink-0 p-2 rounded-lg border transition-colors ${copied ? "border-green-500 bg-green-50 dark:bg-green-950/20 text-green-600" : "border-border hover:bg-accent text-muted-foreground"}`}>
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[10px] text-amber-600 dark:text-amber-500">
+              Utilisez cette clé dans le header <code className="font-mono">X-API-Key: &lt;clé&gt;</code> ou en tant que token Bearer.
+            </p>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            size="sm"
+            variant={hasKey ? "outline" : "default"}
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending || revokeMutation.isPending}
+          >
+            {generateMutation.isPending
+              ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              : <RefreshCw className="w-3.5 h-3.5" />}
+            {hasKey ? "Regénérer" : "Générer une clé"}
+          </Button>
+
+          {hasKey && !confirmRevoke && (
+            <Button size="sm" variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setConfirmRevoke(true)}>
+              <ShieldOff className="w-3.5 h-3.5" />
+              Révoquer
+            </Button>
+          )}
+
+          {confirmRevoke && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Confirmer la révocation ?</span>
+              <Button size="sm" variant="ghost"
+                className="text-destructive hover:bg-destructive/10 h-7 px-2"
+                onClick={() => revokeMutation.mutate()}
+                disabled={revokeMutation.isPending}>
+                <Check className="w-3.5 h-3.5" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setConfirmRevoke(false)}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {(generateMutation.error || revokeMutation.error) && (
+          <p className="text-xs text-destructive">
+            {(generateMutation.error as Error)?.message ?? (revokeMutation.error as Error)?.message}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 // ── Policy form ───────────────────────────────────────────────────────────────
 function PolicySection({ tenantId }: { tenantId: number }) {
@@ -295,6 +438,7 @@ export default function MonTenantPage() {
           </Card>
         )}
 
+        <ApiKeySection tenantId={activeTenantId} />
         <PolicySection tenantId={activeTenantId} />
         <HooksSection tenantId={activeTenantId} />
 

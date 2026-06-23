@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -8,6 +9,7 @@ from app.core.admin_auth import require_admin
 from app.core.auth import get_current_tenant
 from app.core.audit import log_audit
 from app.core.database import get_db
+from app.core.security import hash_api_key
 from app.models.fraud_log import FraudLog
 from app.models.schemas import (
     AlertResponse,
@@ -109,6 +111,57 @@ def delete_tenant(tenant_id: int, db: Session = Depends(get_db)) -> None:
         resource_id=str(tenant_id),
         details={"name": t.name},
     )
+
+
+# ── API Keys ──────────────────────────────────────────────────────────────────
+
+@router.post("/tenants/{tenant_id}/api-key", dependencies=[Depends(require_admin)])
+def generate_api_key(tenant_id: int, db: Session = Depends(get_db)) -> dict:
+    """Génère une nouvelle API key pour le tenant. La clé en clair est retournée une
+    seule fois — seul son hash HMAC est stocké en base."""
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+
+    plain_key = f"fg_{secrets.token_urlsafe(32)}"
+    t.api_key = hash_api_key(plain_key)
+    db.flush()
+    log_audit(
+        db,
+        action_type="GENERATE_API_KEY",
+        actor_type="admin",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        details={"name": t.name},
+    )
+    return {"api_key": plain_key, "tenant_id": tenant_id}
+
+
+@router.delete("/tenants/{tenant_id}/api-key", status_code=204, dependencies=[Depends(require_admin)])
+def revoke_api_key(tenant_id: int, db: Session = Depends(get_db)) -> None:
+    """Révoque l'API key du tenant (met api_key à NULL)."""
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    t.api_key = None
+    db.flush()
+    log_audit(
+        db,
+        action_type="REVOKE_API_KEY",
+        actor_type="admin",
+        resource_type="tenant",
+        resource_id=str(tenant_id),
+        details={"name": t.name},
+    )
+
+
+@router.get("/tenants/{tenant_id}/api-key/status", dependencies=[Depends(require_admin)])
+def get_api_key_status(tenant_id: int, db: Session = Depends(get_db)) -> dict:
+    """Indique si le tenant possède une API key active (sans révéler le hash)."""
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    return {"has_key": t.api_key is not None, "tenant_id": tenant_id}
 
 
 # ── Policies ──────────────────────────────────────────────────────────────────
