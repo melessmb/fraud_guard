@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, BarChart2, AlertTriangle, Zap,
   Building2, Cpu, FileText, User, Settings, ShieldCheck,
-  ChevronLeft, ChevronRight, ArrowLeftRight, GitCompareArrows,
+  ChevronLeft, ChevronRight, ArrowLeftRight, GitCompareArrows, Users,
 } from "lucide-react";
 
 interface NavItem {
@@ -25,8 +25,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Alertes",         href: "/alertes",    icon: AlertTriangle },
   { label: "Scoring",         href: "/scoring",    icon: Zap },
   { label: "Tenants",         href: "/tenants",    icon: Building2,         roles: ["admin"] },
-  { label: "Comparatif",      href: "/comparatif", icon: GitCompareArrows,  roles: ["admin"] },
-  { label: "Modèles",         href: "/modeles",    icon: Cpu,               roles: ["admin"] },
+  { label: "Comparatif",      href: "/comparatif",    icon: GitCompareArrows,  roles: ["admin"] },
+  { label: "Utilisateurs",    href: "/utilisateurs",  icon: Users,             roles: ["admin", "tenant_admin"] },
+  { label: "Modèles",         href: "/modeles",       icon: Cpu,               roles: ["admin"] },
   { label: "Conformité",      href: "/conformite", icon: FileText,  roles: ["admin", "tenant_admin", "compliance"] },
   { label: "Mon Tenant",      href: "/mon-tenant", icon: Settings,  roles: ["tenant_admin"] },
   { label: "Profil",          href: "/profil",     icon: User },

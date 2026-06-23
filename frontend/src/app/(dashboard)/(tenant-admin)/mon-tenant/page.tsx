@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { formatDate } from "@/lib/utils";
-import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight, Key, Copy, AlertTriangle, RefreshCw, ShieldOff } from "lucide-react";
+import { Settings, Webhook, Plus, Trash2, X, Check, ToggleLeft, ToggleRight, Key, Copy, AlertTriangle, RefreshCw, ShieldOff, Users, UserPlus, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import type { TenantResponse, PolicyConfig, ScoringHookResponse } from "@/types/api";
 
 // ── API Key section ───────────────────────────────────────────────────────────
@@ -151,6 +151,148 @@ function ApiKeySection({ tenantId }: { tenantId: number }) {
           <p className="text-xs text-destructive">
             {(generateMutation.error as Error)?.message ?? (revokeMutation.error as Error)?.message}
           </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Users section ─────────────────────────────────────────────────────────────
+const ROLE_COLORS: Record<string, string> = {
+  tenant_admin: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  compliance:   "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  tenant:       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+};
+
+interface UserOut { keycloak_id: string; username: string; email: string; enabled: boolean; roles: string[]; }
+
+function UsersSection({ tenantId }: { tenantId: number }) {
+  const qc = useQueryClient();
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ username: "", email: "", role: "tenant" });
+  const [inviteError, setInviteError] = useState("");
+  const [success, setSuccess] = useState<{ username: string; password: string } | null>(null);
+  const [showPwd, setShowPwd] = useState(false);
+
+  const { data: users = [], isLoading } = useQuery<UserOut[]>({
+    queryKey: ["tenant-users", tenantId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/admin/tenants/${tenantId}/users`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch("/api/v1/admin/users/invite", {
+        method: "POST",
+        body: JSON.stringify({ ...inviteForm, tenant_id: tenantId }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || `Erreur ${res.status}`); }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowInvite(false);
+      setInviteForm({ username: "", email: "", role: "tenant" });
+      setSuccess({ username: data.username, password: data.temporary_password });
+      qc.invalidateQueries({ queryKey: ["tenant-users", tenantId] });
+    },
+    onError: (e: Error) => setInviteError(e.message),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (kid: string) => apiFetch(`/api/v1/admin/users/${kid}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-users", tenantId] }),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2"><Users className="w-4 h-4" />Utilisateurs du tenant</CardTitle>
+        <Button size="sm" onClick={() => { setShowInvite(v => !v); setInviteError(""); }}>
+          <UserPlus className="w-3.5 h-3.5" />Inviter
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+
+        {/* Invite form */}
+        {showInvite && (
+          <div className="border border-border rounded-xl p-4 bg-muted/30 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input type="text" placeholder="Identifiant" value={inviteForm.username}
+                onChange={e => setInviteForm(f => ({ ...f, username: e.target.value }))}
+                className="h-9 px-3 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="email" placeholder="Email" value={inviteForm.email}
+                onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                className="h-9 px-3 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
+                className="h-9 px-3 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="tenant">Utilisateur</option>
+                <option value="tenant_admin">Admin tenant</option>
+                <option value="compliance">Compliance</option>
+              </select>
+            </div>
+            {inviteError && <p className="text-xs text-destructive">{inviteError}</p>}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => inviteMutation.mutate()} loading={inviteMutation.isPending}>Envoyer l&apos;invitation</Button>
+              <Button size="sm" variant="outline" onClick={() => setShowInvite(false)}>Annuler</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Success banner */}
+        {success && (
+          <div className="border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/20 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-semibold text-sm">
+              <ShieldCheck className="w-4 h-4" />Utilisateur créé — communiquez ces identifiants temporaires
+            </div>
+            <div className="font-mono text-sm space-y-0.5">
+              <div>Identifiant : <strong>{success.username}</strong></div>
+              <div className="flex items-center gap-2">
+                Mot de passe : <strong>{showPwd ? success.password : "••••••••••••"}</strong>
+                <button onClick={() => setShowPwd(v => !v)} className="text-muted-foreground">
+                  {showPwd ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+            <button onClick={() => setSuccess(null)} className="text-xs text-muted-foreground hover:text-foreground">Fermer</button>
+          </div>
+        )}
+
+        {/* Users list */}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Chargement…</p>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Aucun utilisateur associé à ce tenant.</p>
+        ) : (
+          <div className="space-y-2">
+            {users.map(u => (
+              <div key={u.keycloak_id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {u.username.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">{u.username}</div>
+                  {u.email && <div className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" />{u.email}</div>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {u.roles.filter(r => r !== "default-roles-fraudguard" && r !== "offline_access" && r !== "uma_authorization").map(r => (
+                    <span key={r} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[r] ?? "bg-muted text-muted-foreground"}`}>{r}</span>
+                  ))}
+                </div>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${u.enabled ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                  {u.enabled ? "Actif" : "Désactivé"}
+                </span>
+                {u.enabled && (
+                  <button onClick={() => { if (confirm(`Révoquer ${u.username} ?`)) revokeMutation.mutate(u.keycloak_id); }}
+                    className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -433,6 +575,7 @@ export default function MonTenantPage() {
         )}
 
         <ApiKeySection tenantId={activeTenantId} />
+        <UsersSection tenantId={activeTenantId} />
         <PolicySection tenantId={activeTenantId} />
         <HooksSection tenantId={activeTenantId} />
 

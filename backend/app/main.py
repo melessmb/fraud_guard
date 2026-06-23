@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from app.api import auth as auth_api
 from app.api import compliance as compliance_api
 from app.api import events as events_api
+from app.api import users as users_api
 from app.api import export as export_api
 from app.api import fraud as fraud_api
 from app.api import hooks as hooks_api
@@ -105,3 +106,4 @@ app.include_router(model_api.router,      prefix="/api/v1", tags=["model"])
 app.include_router(compliance_api.router, prefix="/api/v1", tags=["compliance"])
 app.include_router(export_api.router,     prefix="/api/v1", tags=["export"])
 app.include_router(events_api.router,     prefix="/api/v1", tags=["events"])
+app.include_router(users_api.router,      prefix="/api/v1", tags=["users"])

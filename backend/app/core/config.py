@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     keycloak_realm: str = "fraudguard"
     # Audience JWT : si non vide, le claim "aud" du token est vérifié
     keycloak_client_id: str = ""
+    # Keycloak Admin API (master realm)
+    keycloak_admin_user: str = "admin"
+    keycloak_admin_password: str = "admin"
 
     # CORS — liste de domaines séparés par virgule ; "*" uniquement en debug
     cors_origins: str = "*"
