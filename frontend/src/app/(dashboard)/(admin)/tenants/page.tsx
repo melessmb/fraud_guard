@@ -37,10 +37,8 @@ function TenantModal({ tenant, onClose, onSaved }: {
     try {
       const url     = tenant ? `/api/v1/tenants/${tenant.id}` : "/api/v1/tenants";
       const method  = tenant ? "PUT" : "POST";
-      const res     = await fetch(url, {
+      const res     = await apiFetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error((await res.json()).detail ?? "Erreur");
@@ -118,7 +116,7 @@ export default function TenantsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/v1/tenants/${id}`, { method: "DELETE", credentials: "include" });
+      await apiFetch(`/api/v1/tenants/${id}`, { method: "DELETE" });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tenants"] }); setToDelete(null); },
   });

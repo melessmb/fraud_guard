@@ -163,7 +163,7 @@ function PolicySection({ tenantId }: { tenantId: number }) {
   const { data: policy } = useQuery<PolicyConfig>({
     queryKey: ["policy", tenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${tenantId}/policies`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/policies`);
       if (!res.ok) return null;
       return res.json();
     },
@@ -175,10 +175,8 @@ function PolicySection({ tenantId }: { tenantId: number }) {
   const mutation = useMutation({
     mutationFn: async () => {
       const body = { ...policy, ...form };
-      const res = await fetch(`/api/v1/tenants/${tenantId}/policies`, {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/policies`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
@@ -248,10 +246,8 @@ function HookRow({ hook, tenantId, onDeleted }: { hook: ScoringHookResponse; ten
 
   const toggleMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${tenantId}/hooks/${hook.id}`, {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/hooks/${hook.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ ...hook, enabled: !hook.enabled }),
       });
       if (!res.ok) throw new Error();
@@ -261,7 +257,7 @@ function HookRow({ hook, tenantId, onDeleted }: { hook: ScoringHookResponse; ten
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await fetch(`/api/v1/tenants/${tenantId}/hooks/${hook.id}`, { method: "DELETE", credentials: "include" });
+      await apiFetch(`/api/v1/tenants/${tenantId}/hooks/${hook.id}`, { method: "DELETE" });
     },
     onSuccess: () => { onDeleted(); qc.invalidateQueries({ queryKey: ["hooks", tenantId] }); },
   });
@@ -311,7 +307,7 @@ function HooksSection({ tenantId }: { tenantId: number }) {
   const { data: hooks = [] } = useQuery<ScoringHookResponse[]>({
     queryKey: ["hooks", tenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${tenantId}/hooks`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/hooks`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -319,10 +315,8 @@ function HooksSection({ tenantId }: { tenantId: number }) {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${tenantId}/hooks`, {
+      const res = await apiFetch(`/api/v1/tenants/${tenantId}/hooks`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ ...hookForm, enabled: true }),
       });
       if (!res.ok) throw new Error();
@@ -405,7 +399,7 @@ export default function MonTenantPage() {
   const { data: tenant } = useQuery<TenantResponse>({
     queryKey: ["my-tenant", activeTenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/tenants/${activeTenantId}`, { credentials: "include" });
+      const res = await apiFetch(`/api/v1/tenants/${activeTenantId}`);
       if (!res.ok) return null;
       return res.json();
     },
