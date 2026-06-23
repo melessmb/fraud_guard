@@ -1281,30 +1281,30 @@ function statCard(slide, x, y, w, h, value, label, color, iconEmoji) {
 
   const phases = [
     {
-      quarter: "Q3 2026", color: C.sky, status: "En cours",
+      quarter: "Livré", color: C.success, status: "✅ Terminé",
       items: [
         "Tableau de bord enrichi — KPIs réels & graphiques avancés",
         "Webhooks fraude — déclenchement auto à la détection",
-        "API Keys — UI génération & révocation (modèle existant)",
-        "Pages 404/500 personnalisées",
+        "Notifications SSE temps réel (bell + badge)",
+        "Dark mode & portail conformité export",
+      ],
+    },
+    {
+      quarter: "Q3 2026", color: C.sky, status: "En cours",
+      items: [
+        "API Keys — UI génération & révocation",
+        "Dashboard multi-tenant comparatif (admin)",
+        "Pages 404 / 500 personnalisées",
+        "Explainabilité IA (SHAP values sur alertes)",
       ],
     },
     {
       quarter: "Q4 2026", color: C.gold, status: "Planifié",
       items: [
-        "Dashboard comparatif multi-tenant (admin)",
         "Modèle IA v2 (XGBoost + ensemble)",
-        "Intégration SWIFT GPI transactions cross-border",
+        "Intégration SWIFT GPI cross-border",
         "Application mobile (React Native)",
-      ],
-    },
-    {
-      quarter: "2027", color: C.success, status: "Vision",
-      items: [
-        "Explainabilité IA (SHAP values sur alertes)",
-        "Détection réseau de fraude (graphe)",
-        "Certification ISO 27001",
-        "Déploiement cloud multi-région UEMOA",
+        "Certification ISO 27001 & déploiement UEMOA",
       ],
     },
   ];
