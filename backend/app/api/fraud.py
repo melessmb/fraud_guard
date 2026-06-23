@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -8,9 +10,20 @@ from app.core.pubsub import publish_fraud_alert
 from app.models.fraud_log import FraudLog
 from app.models.schemas import FraudEvent, FraudScoreResponse
 from app.models.tenant import Tenant
+from app.models.tenant_webhook import TenantWebhook
 from app.services.evaluation import score_transaction
+from app.services.hook_executor import call_hook
 
 router = APIRouter()
+
+_FRAUD_EVENT = "fraud_detected"
+
+
+def _risk_level(score: float) -> str:
+    if score >= 0.8: return "critical"
+    if score >= 0.5: return "high"
+    if score >= 0.3: return "medium"
+    return "low"
 
 
 @router.post("/score", response_model=FraudScoreResponse)
@@ -49,20 +62,35 @@ async def score_transaction_endpoint(
     ))
     db.commit()
 
-    # Notifier les clients SSE connectés si c'est une fraude
     if result.is_fraud:
-        score_val = result.score
-        risk = "critical" if score_val >= 0.8 else "high" if score_val >= 0.5 else "medium" if score_val >= 0.3 else "low"
-        await publish_fraud_alert(tenant.id, {
+        risk = _risk_level(result.score)
+
+        alert_payload = {
+            "event":          _FRAUD_EVENT,
             "transaction_id": event.transaction_id,
-            "score": score_val,
-            "risk_level": risk,
-            "amount": event.amount,
-            "currency": event.currency,
-            "channel": event.channel,
-            "country": event.country,
-            "model_version": result.model_version,
-            "timestamp": event.timestamp.isoformat(),
-        })
+            "tenant_id":      tenant.id,
+            "score":          result.score,
+            "risk_level":     risk,
+            "amount":         event.amount,
+            "currency":       event.currency,
+            "channel":        event.channel,
+            "country":        event.country,
+            "model_version":  result.model_version,
+            "timestamp":      event.timestamp.isoformat(),
+        }
+
+        # Notification SSE (dashboard temps réel)
+        await publish_fraud_alert(tenant.id, alert_payload)
+
+        # Webhook tenant — fire-and-forget, n'impacte pas le temps de réponse
+        webhook: TenantWebhook | None = (
+            db.query(TenantWebhook)
+            .filter(TenantWebhook.tenant_id == tenant.id)
+            .first()
+        )
+        if webhook and _FRAUD_EVENT in (webhook.events or []):
+            asyncio.create_task(
+                call_hook(webhook.url, alert_payload, secret=webhook.secret)
+            )
 
     return result
