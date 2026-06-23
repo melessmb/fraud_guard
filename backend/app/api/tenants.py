@@ -425,6 +425,101 @@ def configure_webhook(tenant_id: int, config: WebhookConfig, db: Session = Depen
     return {"status": "configured", "tenant_id": tenant_id, "url": config.url}
 
 
+# ── Admin overview (multi-tenant comparatif) ─────────────────────────────────
+
+@router.get("/admin/overview", dependencies=[Depends(require_admin)])
+def get_admin_overview(
+    days: int = Query(default=30, ge=7, le=365),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Statistiques agrégées pour tous les tenants — dashboard comparatif admin."""
+    now       = datetime.utcnow()
+    cur_start = now - timedelta(days=days)
+    prv_start = cur_start - timedelta(days=days)
+
+    tenants = db.query(Tenant).order_by(Tenant.id).all()
+
+    tenant_stats = []
+    totals = {"transactions": 0, "fraud": 0}
+
+    for t in tenants:
+        cur_logs = (
+            db.query(FraudLog)
+            .filter(FraudLog.tenant_id == t.id,
+                    FraudLog.created_at >= cur_start,
+                    FraudLog.created_at < now)
+            .all()
+        )
+        prv_logs = (
+            db.query(FraudLog)
+            .filter(FraudLog.tenant_id == t.id,
+                    FraudLog.created_at >= prv_start,
+                    FraudLog.created_at < cur_start)
+            .all()
+        )
+
+        cur_total = len(cur_logs)
+        cur_fraud = sum(1 for l in cur_logs if l.is_fraud)
+        prv_total = len(prv_logs)
+        prv_fraud = sum(1 for l in prv_logs if l.is_fraud)
+
+        cur_rate  = cur_fraud / cur_total if cur_total else 0.0
+        prv_rate  = prv_fraud / prv_total if prv_total else 0.0
+        avg_score = sum(l.score for l in cur_logs) / cur_total if cur_total else 0.0
+
+        # Trend : delta taux de fraude
+        trend_delta = cur_rate - prv_rate
+
+        # By day (sparkline — 14 derniers jours)
+        day_map: dict = {}
+        cutoff = now - timedelta(days=14)
+        for l in cur_logs:
+            if l.created_at < cutoff:
+                continue
+            key = l.created_at.strftime("%Y-%m-%d")
+            if key not in day_map:
+                day_map[key] = {"total": 0, "fraud": 0}
+            day_map[key]["total"] += 1
+            if l.is_fraud:
+                day_map[key]["fraud"] += 1
+        sparkline = [
+            {"date": d, "fraud": v["fraud"], "total": v["total"]}
+            for d, v in sorted(day_map.items())
+        ]
+
+        totals["transactions"] += cur_total
+        totals["fraud"]        += cur_fraud
+
+        tenant_stats.append({
+            "id":          t.id,
+            "name":        t.name,
+            "country":     t.country,
+            "environment": t.environment,
+            "transactions": cur_total,
+            "fraud":        cur_fraud,
+            "fraud_rate":   round(cur_rate, 4),
+            "avg_score":    round(avg_score, 4),
+            "trend_delta":  round(trend_delta, 4),
+            "sparkline":    sparkline,
+        })
+
+    # Tri par fraud_rate desc
+    tenant_stats.sort(key=lambda x: x["fraud_rate"], reverse=True)
+
+    global_fraud_rate = totals["fraud"] / totals["transactions"] if totals["transactions"] else 0.0
+
+    return {
+        "period_days": days,
+        "tenant_count": len(tenants),
+        "totals": {
+            "transactions": totals["transactions"],
+            "fraud":        totals["fraud"],
+            "fraud_rate":   round(global_fraud_rate, 4),
+        },
+        "tenants": tenant_stats,
+    }
+
+
 # ── Batch score ───────────────────────────────────────────────────────────────
 
 @router.post("/tenants/{tenant_id}/events", response_model=List[FraudScoreResponse])
