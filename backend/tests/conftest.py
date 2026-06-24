@@ -108,6 +108,8 @@ def client(db_session):
         "app.api.compliance.decode_keycloak_token",
         "app.core.auth.decode_keycloak_token",
         "app.core.keycloak_auth.decode_keycloak_token",
+        "app.core.admin_auth.decode_keycloak_token",
+        "app.core.roles.decode_keycloak_token",
     ]
 
     app.dependency_overrides[get_db] = _override_get_db

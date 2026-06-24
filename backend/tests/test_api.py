@@ -1,5 +1,5 @@
 """Tests d'intégration des endpoints API."""
-from tests.conftest import ADMIN_KEY, TENANT_API_KEY
+from tests.conftest import TENANT_API_KEY, bearer
 
 
 def test_health(client):
@@ -15,14 +15,14 @@ def test_create_tenant_requires_admin(client):
         "environment": "sandbox",
         "api_key": "some-key",
     })
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_create_tenant_with_admin(client):
     resp = client.post(
         "/api/v1/tenants",
         json={"name": "Banque Atlantique CI", "country": "CI", "environment": "sandbox", "api_key": "api-ba-ci-001"},
-        headers={"X-Admin-Key": ADMIN_KEY},
+        headers=bearer("admin"),
     )
     assert resp.status_code == 201
     assert resp.json()["status"] == "created"
@@ -30,18 +30,18 @@ def test_create_tenant_with_admin(client):
 
 def test_create_tenant_duplicate_key(client):
     payload = {"name": "Bank A", "country": "CI", "environment": "sandbox", "api_key": "dup-key-001"}
-    client.post("/api/v1/tenants", json=payload, headers={"X-Admin-Key": ADMIN_KEY})
-    resp = client.post("/api/v1/tenants", json={**payload, "name": "Bank B"}, headers={"X-Admin-Key": ADMIN_KEY})
+    client.post("/api/v1/tenants", json=payload, headers=bearer("admin"))
+    resp = client.post("/api/v1/tenants", json={**payload, "name": "Bank B"}, headers=bearer("admin"))
     assert resp.status_code == 409
 
 
 def test_list_tenants_requires_admin(client, test_tenant):
     resp = client.get("/api/v1/tenants")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_list_tenants_with_admin(client, test_tenant):
-    resp = client.get("/api/v1/tenants", headers={"X-Admin-Key": ADMIN_KEY})
+    resp = client.get("/api/v1/tenants", headers=bearer("admin"))
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
     assert len(resp.json()) >= 1
@@ -75,7 +75,7 @@ def test_score_wrong_tenant_id(client, test_tenant):
         "/api/v1/score",
         json={
             "transaction_id": "txn-api-002",
-            "tenant_id": 99999,  # ID d'un autre tenant
+            "tenant_id": 99999,
             "amount": 50_000,
             "currency": "XOF",
             "channel": "pos",
@@ -109,7 +109,7 @@ def test_score_transaction_invalid_key(client):
 
 
 def test_get_tenant_metrics(client, test_tenant):
-    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/metrics")
+    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/metrics", headers=bearer("admin"))
     assert resp.status_code == 200
     data = resp.json()
     assert data["tenant_id"] == test_tenant.id
@@ -117,11 +117,11 @@ def test_get_tenant_metrics(client, test_tenant):
 
 
 def test_get_tenant_metrics_not_found(client):
-    assert client.get("/api/v1/tenants/99999/metrics").status_code == 404
+    assert client.get("/api/v1/tenants/99999/metrics", headers=bearer("admin")).status_code == 404
 
 
 def test_get_alerts(client, test_tenant):
-    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/alerts")
+    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/alerts", headers=bearer("admin"))
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
@@ -129,21 +129,21 @@ def test_get_alerts(client, test_tenant):
 def test_update_policy_requires_admin(client, test_tenant):
     resp = client.post(f"/api/v1/tenants/{test_tenant.id}/policies",
                        json={"score_threshold": 0.8})
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_update_policy_with_admin(client, test_tenant):
     resp = client.post(
         f"/api/v1/tenants/{test_tenant.id}/policies",
         json={"score_threshold": 0.75, "auto_reject_threshold": 0.95, "model_id": "fraud_v1"},
-        headers={"X-Admin-Key": ADMIN_KEY},
+        headers=bearer("admin"),
     )
     assert resp.status_code == 200
     assert resp.json()["score_threshold"] == 0.75
 
 
 def test_get_policy(client, test_tenant):
-    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/policies")
+    resp = client.get(f"/api/v1/tenants/{test_tenant.id}/policies", headers=bearer("admin"))
     assert resp.status_code == 200
     assert "score_threshold" in resp.json()
 
@@ -155,11 +155,10 @@ def test_list_model_versions(client):
 
 
 def test_promote_model_requires_admin(client):
-    assert client.post("/api/v1/model/versions/v1/promote").status_code == 403
+    assert client.post("/api/v1/model/versions/v1/promote").status_code == 401
 
 
 def test_promote_model_with_admin(client):
-    resp = client.post("/api/v1/model/versions/v1/promote",
-                       headers={"X-Admin-Key": ADMIN_KEY})
+    resp = client.post("/api/v1/model/versions/v1/promote", headers=bearer("admin"))
     assert resp.status_code == 200
     assert resp.json()["stage"] == "production"
