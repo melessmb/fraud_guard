@@ -72,8 +72,8 @@
       "username": "fraudguard-admin",
       "enabled": true,
       "email": "admin@fraudguard.local",
-      "firstName": "Admin",
-      "lastName": "FraudGuard",
+      "firstName": "FraudGuard",
+      "lastName": "Admin",
       "credentials": [
         {
           "type": "password",
@@ -92,7 +92,7 @@
       "enabled": true,
       "email": "tenant-admin@fraudguard.local",
       "firstName": "Tenant",
-      "lastName": "Admin Demo",
+      "lastName": "Admin",
       "credentials": [
         {
           "type": "password",
