@@ -28,9 +28,8 @@ export function PortalSidebar() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    document.cookie = "fg_token=; path=/; max-age=0";
     clearUser();
-    router.push("/login");
+    router.push("/portal/login");
   };
 
   const initials = user?.username.slice(0, 2).toUpperCase() ?? "??";

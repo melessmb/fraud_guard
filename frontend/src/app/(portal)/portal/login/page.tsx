@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, Eye, EyeOff, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/stores/auth.store";
+import { useAppStore } from "@/lib/stores/app.store";
 import type { UserInfo, UserRole } from "@/lib/stores/auth.store";
 
 function decodeJwt(token: string): Record<string, unknown> {
@@ -15,9 +16,10 @@ function decodeJwt(token: string): Record<string, unknown> {
   } catch { return {}; }
 }
 
-export default function LoginPage() {
+export default function PortalLoginPage() {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
+  const setActiveTenantId = useAppStore((s) => s.setActiveTenantId);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,21 +47,35 @@ export default function LoginPage() {
       }
 
       const payload = decodeJwt(data.access_token);
+      const roles = ((payload as any).realm_access?.roles ?? []) as UserRole[];
+
+      // Ce portail est réservé aux opérateurs clients (tenant, compliance)
+      const allowedRoles: UserRole[] = ["tenant", "compliance", "tenant_admin"];
+      const hasPortalRole = roles.some((r) => allowedRoles.includes(r));
+      if (!hasPortalRole) {
+        setError("Ce portail est réservé aux opérateurs clients. Utilisez l'espace FraudGuard.");
+        return;
+      }
+
       const userInfo: UserInfo = {
         sub:      payload.sub as string,
         username: (payload.preferred_username as string) || username,
         email:    (payload.email as string) || "",
-        roles:    ((payload as any).realm_access?.roles ?? []) as UserRole[],
-        tenantId: (payload as any).tenant_id as number | undefined,
+        roles,
+        tenantId: undefined,
       };
       setUser(userInfo, data.access_token);
-      // Rôle "tenant" seul → renvoyer vers l'espace client
-      const isTenantOnly = userInfo.roles.includes("tenant") && !userInfo.roles.includes("admin") && !userInfo.roles.includes("tenant_admin") && !userInfo.roles.includes("compliance");
-      if (isTenantOnly) {
-        setError("Cet espace est réservé à l'équipe FraudGuard. Utilisez l'espace client →");
-        return;
+
+      // Résoudre le tenant de cet utilisateur
+      const tenantRes = await fetch("/api/v1/my-tenant", {
+        headers: { "Authorization": `Bearer ${data.access_token}` },
+      });
+      if (tenantRes.ok) {
+        const tenantData = await tenantRes.json();
+        setActiveTenantId(tenantData.id);
       }
-      router.push("/");
+
+      router.push("/portal");
     } catch {
       setError("Erreur de connexion. Vérifiez que l'API est accessible.");
     } finally {
@@ -69,22 +85,19 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {/* Subtle background gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-green-500/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-blue-500/5 blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-blue-500/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-indigo-500/5 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-blue-500 shadow-lg mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg mb-4">
             <ShieldCheck className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">FraudGuard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Détection de fraude — Afrique de l&apos;Ouest
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Espace Client</p>
         </div>
 
         {/* Card */}
@@ -92,38 +105,32 @@ export default function LoginPage() {
           <div className="mb-6">
             <h2 className="text-base font-semibold text-foreground">Connexion</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Accédez à votre espace d&apos;administration
+              Accédez à votre espace de suivi des transactions
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username */}
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">
-                Identifiant
-              </label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Identifiant</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ex: fraudguard-admin"
+                placeholder="ex: operateur-orange"
                 required
-                className="w-full h-9 px-3 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                className="w-full h-9 px-3 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">
-                Mot de passe
-              </label>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Mot de passe</label>
               <div className="relative">
                 <input
                   type={showPwd ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full h-9 px-3 pr-9 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                  className="w-full h-9 px-3 pr-9 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
                 <button
                   type="button"
@@ -135,30 +142,31 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
                 {error}
               </div>
             )}
 
-            {/* Submit */}
-            <Button type="submit" className="w-full" loading={loading}>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-9 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+            >
               {loading ? "Connexion en cours…" : "Se connecter"}
-            </Button>
+            </button>
           </form>
         </div>
 
-        {/* Footer */}
         <div className="text-center mt-4 space-y-2">
           <div className="flex items-center justify-center gap-1.5">
             <Lock className="w-3 h-3 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Authentification sécurisée via Keycloak</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Opérateur client ?{" "}
-            <a href="/portal/login" className="text-green-600 hover:underline font-medium">
-              Espace client →
+            Équipe FraudGuard ?{" "}
+            <a href="/login" className="text-blue-600 hover:underline font-medium">
+              Espace administration →
             </a>
           </p>
         </div>

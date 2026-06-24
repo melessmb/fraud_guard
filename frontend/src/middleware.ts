@@ -4,9 +4,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("fg_token")?.value;
 
-  // Inject Authorization header from httpOnly cookie for all /api/v1/* requests.
-  // This runs before the rewrite proxies the request to the FastAPI backend,
-  // so the backend always receives a proper Bearer token regardless of Zustand state.
+  // Inject Authorization header from httpOnly cookie for all /api/v1/* requests
   if (pathname.startsWith("/api/v1/")) {
     if (token) {
       const headers = new Headers(request.headers);
@@ -16,7 +14,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Skip Next.js internals, static files, and Next.js API routes (/api/auth/*)
+  // Skip Next.js internals, static files, and auth API routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
@@ -25,18 +23,36 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isLoginPage = pathname === "/login";
+  const isPortalLogin    = pathname === "/portal/login";
+  const isPortalRoute    = pathname.startsWith("/portal");
+  const isDashboardLogin = pathname === "/login";
 
-  // Redirect unauthenticated users to /login
-  if (!isLoginPage && !token) {
-    const loginUrl = new URL("/login", request.url);
-    if (pathname !== "/") loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+  // ── Portal routes (/portal/*) ────────────────────────────────────────────
+  if (isPortalRoute) {
+    if (isPortalLogin) {
+      // Already logged in → skip portal login
+      if (token) return NextResponse.redirect(new URL("/portal", request.url));
+      return NextResponse.next();
+    }
+    // Unauthenticated → portal login
+    if (!token) {
+      const url = new URL("/portal/login", request.url);
+      if (pathname !== "/portal") url.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
   }
 
-  // Already logged in → skip login page
-  if (isLoginPage && token) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // ── Dashboard routes ─────────────────────────────────────────────────────
+  if (isDashboardLogin) {
+    if (token) return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.next();
+  }
+
+  if (!token) {
+    const url = new URL("/login", request.url);
+    if (pathname !== "/") url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

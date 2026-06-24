@@ -33,6 +33,16 @@ from app.models.tenant_webhook import TenantWebhook
 router = APIRouter()
 
 
+# ── Tenant courant (portal client) ───────────────────────────────────────────
+
+@router.get("/my-tenant", response_model=TenantResponse)
+def get_my_tenant(
+    tenant: Tenant = Depends(get_current_tenant),
+) -> TenantResponse:
+    """Retourne le tenant de l'utilisateur connecté (rôle tenant/compliance/tenant_admin)."""
+    return TenantResponse.model_validate(tenant)
+
+
 # ── CRUD tenants ──────────────────────────────────────────────────────────────
 
 @router.post("/tenants", status_code=201, dependencies=[Depends(require_admin)])
