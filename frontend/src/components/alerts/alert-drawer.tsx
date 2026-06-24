@@ -41,6 +41,7 @@ interface Props {
   alert: AlertDetail | null;
   onClose: () => void;
   onStatusChange: (updated: AlertDetail) => void;
+  fetchFn?: (input: string, init?: RequestInit) => Promise<Response>;
 }
 
 const RISK_STYLE: Record<string, { bar: string; badge: string; label: string }> = {
@@ -132,7 +133,7 @@ function ShapChart({ shap_values, base_value }: { shap_values: Record<string, nu
   );
 }
 
-export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
+export function AlertDrawer({ alert, onClose, onStatusChange, fetchFn = apiFetch }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
@@ -152,7 +153,7 @@ export function AlertDrawer({ alert, onClose, onStatusChange }: Props) {
     setLoading(newStatus);
     setError("");
     try {
-      const res = await apiFetch(`/api/v1/tenants/${alert.tenant_id}/alerts/${alert.id}`, {
+      const res = await fetchFn(`/api/v1/tenants/${alert.tenant_id}/alerts/${alert.id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: newStatus, comment: comment || undefined }),
       });

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/fetch";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { portalFetch } from "@/lib/api/portal-fetch";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { PortalPageHeader } from "@/components/portal/page-header";
 import { Save, Loader2 } from "lucide-react";
@@ -15,7 +15,7 @@ interface Policy {
 }
 
 export default function PortalConfigurationPage() {
-  const { user } = useAuthStore();
+  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
   const [form, setForm] = useState<Policy>({ high_risk_threshold: 0.8, medium_risk_threshold: 0.5, auto_block_threshold: 0.95, webhook_url: "" });
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function PortalConfigurationPage() {
   useEffect(() => {
     const tenantId = activeTenantId;
     if (!tenantId) return;
-    apiFetch(`/api/v1/tenants/${tenantId}/policies`)
+    portalFetch(`/api/v1/tenants/${tenantId}/policies`)
       .then(r => r.json())
       .then(data => setForm(f => ({ ...f, ...data })))
       .catch(console.error)
@@ -39,7 +39,7 @@ export default function PortalConfigurationPage() {
     if (!tenantId) return;
     setSaving(true); setError(""); setSaved(false);
     try {
-      const res = await apiFetch(`/api/v1/tenants/${tenantId}/policies`, {
+      const res = await portalFetch(`/api/v1/tenants/${tenantId}/policies`, {
         method: "PUT",
         body: JSON.stringify(form),
       });

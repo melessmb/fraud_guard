@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, AlertTriangle, BarChart2, Zap,
@@ -23,11 +23,11 @@ const NAV_ITEMS = [
 export function PortalSidebar() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { user, clearUser } = useAuthStore();
+  const { user, clearUser } = usePortalAuthStore();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/portal/auth/logout", { method: "POST" });
     clearUser();
     router.push("/portal/login");
   };

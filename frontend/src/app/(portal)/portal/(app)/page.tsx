@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api/fetch";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { portalFetch } from "@/lib/api/portal-fetch";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { ShieldAlert, TrendingUp, CheckCircle, AlertTriangle, Zap, ArrowUpRight } from "lucide-react";
 import { PortalPageHeader } from "@/components/portal/page-header";
@@ -34,7 +34,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 }
 
 export default function PortalDashboard() {
-  const { user } = useAuthStore();
+  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
   const [metrics, setMetrics] = useState<TenantMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function PortalDashboard() {
   useEffect(() => {
     const tenantId = activeTenantId;
     if (!tenantId) return;
-    apiFetch(`/api/v1/tenants/${tenantId}/metrics?hours=24`)
+    portalFetch(`/api/v1/tenants/${tenantId}/metrics?hours=24`)
       .then(r => r.json())
       .then(setMetrics)
       .catch(console.error)

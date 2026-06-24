@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { PortalPageHeader } from "@/components/portal/page-header";
 import { ExportButton } from "@/components/export/export-button";
 import { FileText, Calendar } from "lucide-react";
 
 export default function PortalConformitePage() {
-  const { user } = useAuthStore();
+  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
   const tenantId = activeTenantId;
 

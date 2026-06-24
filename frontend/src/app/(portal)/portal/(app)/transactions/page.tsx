@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { apiFetch } from "@/lib/api/fetch";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { portalFetch } from "@/lib/api/portal-fetch";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { PortalPageHeader } from "@/components/portal/page-header";
 import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
@@ -36,7 +36,7 @@ const RISK_BADGE: Record<string, string> = {
 };
 
 export default function PortalTransactionsPage() {
-  const { user } = useAuthStore();
+  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
   const [data, setData] = useState<PagedResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function PortalTransactionsPage() {
       const params = new URLSearchParams({ page: String(p), page_size: "25" });
       if (fraud !== "") params.set("is_fraud", fraud);
       if (risk)         params.set("risk_level", risk);
-      const res = await apiFetch(`/api/v1/tenants/${tenantId}/transactions?${params}`);
+      const res = await portalFetch(`/api/v1/tenants/${tenantId}/transactions?${params}`);
       if (res.ok) setData(await res.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

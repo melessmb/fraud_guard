@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Eye, EyeOff, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import type { UserInfo, UserRole } from "@/lib/stores/auth.store";
+import type { UserInfo, UserRole } from "@/lib/stores/portal-auth.store";
 
 function decodeJwt(token: string): Record<string, unknown> {
   try {
@@ -18,7 +17,7 @@ function decodeJwt(token: string): Record<string, unknown> {
 
 export default function PortalLoginPage() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setUser = usePortalAuthStore((s) => s.setUser);
   const setActiveTenantId = useAppStore((s) => s.setActiveTenantId);
 
   const [username, setUsername] = useState("");
@@ -33,7 +32,7 @@ export default function PortalLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/portal/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

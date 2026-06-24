@@ -41,8 +41,9 @@ async def get_current_tenant(
     payload = decode_keycloak_token(token)
 
     roles: list[str] = payload.get("realm_access", {}).get("roles", [])
-    if "tenant" not in roles and "admin" not in roles:
-        raise HTTPException(status_code=403, detail="Rôle 'tenant' requis")
+    allowed = _CLIENT_ROLES | {"admin"}
+    if not allowed.intersection(roles):
+        raise HTTPException(status_code=403, detail="Accès refusé")
 
     keycloak_id: str = payload.get("sub", "")
     tenant = db.query(Tenant).filter(Tenant.keycloak_id == keycloak_id).first()

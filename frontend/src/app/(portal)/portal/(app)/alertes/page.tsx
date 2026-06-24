@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { apiFetch } from "@/lib/api/fetch";
-import { useAuthStore } from "@/lib/stores/auth.store";
+import { portalFetch } from "@/lib/api/portal-fetch";
+import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { PortalPageHeader } from "@/components/portal/page-header";
 import { AlertDrawer, type AlertDetail } from "@/components/alerts/alert-drawer";
@@ -25,7 +25,7 @@ const RISK_BADGE: Record<string, string> = {
 };
 
 export default function PortalAlertesPage() {
-  const { user } = useAuthStore();
+  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
   const [alerts, setAlerts] = useState<AlertDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export default function PortalAlertesPage() {
     try {
       const params = new URLSearchParams({ limit: "50" });
       if (sf) params.set("status", sf);
-      const res = await apiFetch(`/api/v1/tenants/${tenantId}/alerts?${params}`);
+      const res = await portalFetch(`/api/v1/tenants/${tenantId}/alerts?${params}`);
       if (res.ok) setAlerts(await res.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -107,7 +107,7 @@ export default function PortalAlertesPage() {
           </table>
         </div>
       )}
-      <AlertDrawer alert={selected} onClose={()=>setSelected(null)} onStatusChange={handleStatusChange}/>
+      <AlertDrawer alert={selected} onClose={()=>setSelected(null)} onStatusChange={handleStatusChange} fetchFn={portalFetch}/>
     </div>
   );
 }

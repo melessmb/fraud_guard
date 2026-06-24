@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api/fetch";
+import { portalFetch } from "@/lib/api/portal-fetch";
 import { useAppStore } from "@/lib/stores/app.store";
 import { PortalPageHeader } from "@/components/portal/page-header";
 import { Zap, ShieldAlert, CheckCircle } from "lucide-react";
@@ -67,7 +67,7 @@ export default function PortalScoringPage() {
         ip_address: form.ip_address || "0.0.0.0",
         timestamp: new Date().toISOString(),
       };
-      const res = await apiFetch("/api/v1/score", { method: "POST", body: JSON.stringify(body) });
+      const res = await portalFetch("/api/v1/score", { method: "POST", body: JSON.stringify(body) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || `Erreur ${res.status}`);
