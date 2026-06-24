@@ -11,19 +11,19 @@
     "realm": [
       {
         "name": "admin",
-        "description": "Administrateur de la plateforme FraudGuard (équipe interne)"
+        "description": "Administrateur de la plateforme FraudGuard (\u00e9quipe interne)"
       },
       {
         "name": "tenant_admin",
-        "description": "Administrateur d'une entreprise cliente (banque, opérateur mobile money)"
+        "description": "Administrateur d'une entreprise cliente (banque, op\u00e9rateur mobile money)"
       },
       {
         "name": "compliance",
-        "description": "Équipe conformité d'une entreprise cliente — alertes et rapports BCEAO"
+        "description": "\u00c9quipe conformit\u00e9 d'une entreprise cliente \u2014 alertes et rapports BCEAO"
       },
       {
         "name": "tenant",
-        "description": "Système technique d'une entreprise cliente — accès API scoring uniquement"
+        "description": "Syst\u00e8me technique d'une entreprise cliente \u2014 acc\u00e8s API scoring uniquement"
       }
     ]
   },
@@ -62,7 +62,9 @@
       "serviceAccountsEnabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "tenant-client-secret-change-in-prod",
-      "redirectUris": ["*"]
+      "redirectUris": [
+        "*"
+      ]
     }
   ],
   "users": [
@@ -72,8 +74,18 @@
       "email": "admin@fraudguard.local",
       "firstName": "Admin",
       "lastName": "FraudGuard",
-      "credentials": [{"type": "password", "value": "Admin1234!", "temporary": false}],
-      "realmRoles": ["admin"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "emailVerified": true,
+      "requiredActions": []
     },
     {
       "username": "tenant-admin-demo",
@@ -81,8 +93,18 @@
       "email": "tenant-admin@fraudguard.local",
       "firstName": "Tenant",
       "lastName": "Admin Demo",
-      "credentials": [{"type": "password", "value": "TenantAdmin1234!", "temporary": false}],
-      "realmRoles": ["tenant_admin"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "TenantAdmin1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "tenant_admin"
+      ],
+      "emailVerified": true,
+      "requiredActions": []
     },
     {
       "username": "compliance-demo",
@@ -90,8 +112,18 @@
       "email": "compliance@fraudguard.local",
       "firstName": "Compliance",
       "lastName": "Demo",
-      "credentials": [{"type": "password", "value": "Compliance1234!", "temporary": false}],
-      "realmRoles": ["compliance"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Compliance1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "compliance"
+      ],
+      "emailVerified": true,
+      "requiredActions": []
     },
     {
       "username": "tenant-demo",
@@ -99,8 +131,18 @@
       "email": "tenant-demo@fraudguard.local",
       "firstName": "Tenant",
       "lastName": "Demo",
-      "credentials": [{"type": "password", "value": "Tenant1234!", "temporary": false}],
-      "realmRoles": ["tenant"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Tenant1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "tenant"
+      ],
+      "emailVerified": true,
+      "requiredActions": []
     }
   ]
 }
