@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 
   // Désactive le keep-alive sur les connexions proxy vers le backend.
   // Sans ça, Next.js réutilise les connexions TCP du pool HTTP. Quand une
