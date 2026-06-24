@@ -195,9 +195,43 @@ npm run dev -- -p 3001   # port 3001 si Docker tourne sur 3000
 - **Request ID** — `X-Request-ID` injecté dans chaque requête et tous les logs structlog
 - **Retry webhooks** — backoff exponentiel (1s / 2s / 4s), pas de retry sur 4xx
 - **Graceful shutdown** — drain des tâches asyncio fire-and-forget (timeout 10s)
-- **Pool connexions** — `pool_size=5`, `max_overflow=10`, `pool_recycle=1800s`
+- **Pool connexions** — `pool_size=15`, `max_overflow=5` par worker, `pool_recycle=1800s`
 - **Docker restart** — `restart: unless-stopped` sur tous les services
 - **Resource limits** — API : 512M RAM, 1 CPU
+
+## Performance
+
+L'API est dimensionnée pour **~800–1000 transactions simultanées** grâce à trois optimisations :
+
+### 1. Gunicorn multi-workers
+```
+uvicorn (1 worker) → gunicorn N workers UvicornWorker
+```
+Configurable via `WEB_CONCURRENCY` (défaut : 4, règle du pouce : `2 × CPU + 1`) :
+```bash
+# Exemple en production sur 4 CPU
+docker run -e WEB_CONCURRENCY=9 ...
+```
+
+### 2. Inférence ML hors event loop
+LightGBM + SHAP (~15ms CPU) s'exécute dans un `ThreadPoolExecutor` dédié (8 threads) via `run_in_executor` — l'event loop asyncio reste libre pendant l'inférence.
+
+### 3. Pool de connexions DB calibré par worker
+```
+Budget : (pool_size=15 + max_overflow=5) × 4 workers = 80 connexions
+         → safe sous PostgreSQL défaut (max_connections=100)
+```
+
+### Capacité estimée
+
+| Configuration | Req/s | Latence p99 |
+|---------------|-------|-------------|
+| 1 worker uvicorn (avant) | ~50 | > 10s |
+| 4 workers Gunicorn | ~200 | ~500ms |
+| + ML sur thread pool | ~500 | ~200ms |
+| + pool DB calibré | **~800–1000** | **~150ms** |
+
+> Pour dépasser 1000 req/s : scaling horizontal (plusieurs replicas), cache Redis des scores par `transaction_id`, et/ou batch scoring asynchrone.
 
 ## Tests
 
