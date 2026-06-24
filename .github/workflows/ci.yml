@@ -86,7 +86,53 @@ jobs:
         run: npm run build
 
   # ────────────────────────────────────────────────────────────
-  # Job 3 — Commitlint (convention des messages de commit)
+  # Job 3 — SonarCloud (qualité + sécurité du code)
+  # ────────────────────────────────────────────────────────────
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.13 (couverture backend)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Installer les dépendances backend
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx pydantic[email] pytest-cov
+
+      - name: Tests backend avec couverture
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite:///./test.db"
+          REDIS_URL: "redis://localhost:6379"
+          KEYCLOAK_URL: "http://localhost:8080"
+          KEYCLOAK_REALM: "fraudguard"
+          KEYCLOAK_CLIENT_ID: "fraudguard-api"
+          KEYCLOAK_CLIENT_SECRET: "test-secret"
+          SECRET_KEY: "test-secret-key-for-ci-only"
+          ENVIRONMENT: "test"
+        run: |
+          python -m pytest tests/ -q --tb=short -p no:warnings \
+            --ignore=tests/__pycache__ \
+            --cov=app --cov-report=xml:coverage.xml
+
+      - name: Analyse SonarCloud
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ────────────────────────────────────────────────────────────
+  # Job 4 — Commitlint (convention des messages de commit)
   # ────────────────────────────────────────────────────────────
   commitlint:
     name: Commitlint
