@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
 import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import { PortalPageHeader } from "@/components/portal/page-header";
 import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Transaction {
@@ -64,10 +63,6 @@ export default function PortalTransactionsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader
-        title="Mes transactions"
-        subtitle={data ? `${data.total.toLocaleString()} transactions enregistrées` : "Chargement…"}
-      />
 
       {/* Filtres compacts */}
       <div className="mt-4 mb-4 flex flex-wrap gap-3 items-end">

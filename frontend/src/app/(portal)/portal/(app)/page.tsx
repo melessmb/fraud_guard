@@ -5,7 +5,6 @@ import { portalFetch } from "@/lib/api/portal-fetch";
 import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { ShieldAlert, TrendingUp, CheckCircle, AlertTriangle, Zap, ArrowUpRight } from "lucide-react";
-import { PortalPageHeader } from "@/components/portal/page-header";
 
 interface TenantMetrics {
   transaction_count: number;
@@ -51,10 +50,6 @@ export default function PortalDashboard() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader
-        title={`Bonjour, ${user?.username ?? "—"}`}
-        subtitle="Voici l'état de votre détection de fraude sur les 24 dernières heures."
-      />
 
       {loading ? (
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 mt-6">

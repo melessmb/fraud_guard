@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import { portalFetch } from "@/lib/api/portal-fetch";
-import { PortalPageHeader } from "@/components/portal/page-header";
 import {
   Users, UserPlus, Trash2, Copy, Check, Shield,
   Code2, FileText, User, X, Loader2,
@@ -102,10 +101,6 @@ export default function PortalEquipePage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader
-        title="Équipe"
-        subtitle="Gérez les membres de votre organisation et leurs accès."
-      />
 
       {/* Tabs */}
       <div className="mt-5 flex gap-1 border-b border-border">

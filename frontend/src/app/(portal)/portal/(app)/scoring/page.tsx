@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
 import { useAppStore } from "@/lib/stores/app.store";
-import { PortalPageHeader } from "@/components/portal/page-header";
 import { Zap, ShieldAlert, CheckCircle } from "lucide-react";
 
 interface ScoreResult {
@@ -85,7 +84,6 @@ export default function PortalScoringPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader title="Scoring de transaction" subtitle="Analysez une transaction pour évaluer son niveau de risque." />
 
       <div className="mt-6 max-w-lg space-y-4">
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-6 space-y-4">

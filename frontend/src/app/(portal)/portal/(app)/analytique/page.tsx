@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
 import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import { PortalPageHeader } from "@/components/portal/page-header";
 
 interface MetricsData {
   transaction_count: number;
@@ -42,7 +41,6 @@ export default function PortalAnalytiquePage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader title="Analytique" subtitle="Comparatif des performances de détection sur 24h et 7 jours." />
 
       {loading ? (
         <div className="mt-6 h-48 bg-card border border-border rounded-xl animate-pulse" />

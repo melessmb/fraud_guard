@@ -60,7 +60,7 @@ function NotifItem({ n, onRead }: { n: FraudNotification; onRead: () => void }) 
   );
 }
 
-export function NotificationBell() {
+export function NotificationBell({ alertsHref = "/alertes" }: { alertsHref?: string }) {
   const { notifications, unreadCount, markAllRead, markRead, clear } = useNotificationsStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -168,7 +168,7 @@ export function NotificationBell() {
                 </span>
               )}
               <Link
-                href="/alertes"
+                href={alertsHref}
                 onClick={handleClose}
                 className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
               >

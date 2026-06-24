@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
 import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
-import { PortalPageHeader } from "@/components/portal/page-header";
 import { AlertDrawer, type AlertDetail } from "@/components/alerts/alert-drawer";
 import { CheckCircle, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -56,7 +55,6 @@ export default function PortalAlertesPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <PortalPageHeader title="Mes alertes fraude" subtitle="Cliquez sur une alerte pour la qualifier ou la rejeter." />
       <div className="mt-4 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
