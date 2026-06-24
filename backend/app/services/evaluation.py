@@ -1,7 +1,10 @@
 """Pipeline de scoring — intègre les pre/post-score hooks des tenants."""
 from __future__ import annotations
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -10,6 +13,9 @@ from app.models.schemas import FraudEvent, FraudScoreResponse
 from app.services.risk import evaluate_risk
 
 log = logging.getLogger(__name__)
+
+# Pool dédié à l'inférence CPU (LightGBM + SHAP) — libère l'event loop asyncio
+_ML_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ml-worker")
 
 
 async def score_transaction(
@@ -79,8 +85,12 @@ async def score_transaction(
                     },
                 )
 
-    # ── 2. Scoring ML ─────────────────────────────────────────────────────────
-    ml_result = evaluate_risk(event, extra_context=context)
+    # ── 2. Scoring ML — exécuté dans un thread dédié pour ne pas bloquer l'event loop
+    loop = asyncio.get_event_loop()
+    ml_result = await loop.run_in_executor(
+        _ML_EXECUTOR,
+        partial(evaluate_risk, event, extra_context=context),
+    )
 
     score       = ml_result["score"]
     is_fraud    = ml_result["is_fraud"]

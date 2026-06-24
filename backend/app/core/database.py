@@ -9,12 +9,16 @@ from app.core.config import settings
 _is_sqlite = settings.database_url.startswith("sqlite")
 _connect_args = {"check_same_thread": False} if _is_sqlite else {}
 
-# Pool de connexions dimensionné pour la production (ignoré par SQLite)
+# Pool de connexions — ATTENTION : Gunicorn crée un pool PAR WORKER (processus séparé)
+# Budget total = num_workers × (pool_size + max_overflow) < max_connections PostgreSQL
+# PostgreSQL défaut : max_connections=100, réserver 10 pour admin/migrations
+# Avec WEB_CONCURRENCY=4 → (15+5) × 4 = 80 connexions max → safe
+# Avec WEB_CONCURRENCY=9 → (8+2) × 9 = 90 connexions max → safe
 _pool_kwargs: dict = {} if _is_sqlite else {
-    "pool_size":     5,    # connexions permanentes
-    "max_overflow":  10,   # connexions supplémentaires sous charge
-    "pool_timeout":  30,   # secondes avant TimeoutError si toutes prises
-    "pool_recycle":  1800, # recycler les connexions après 30 min (évite EOF PostgreSQL)
+    "pool_size":     15,   # connexions permanentes par worker
+    "max_overflow":  5,    # connexions supplémentaires en pic par worker
+    "pool_timeout":  30,   # secondes avant TimeoutError si pool saturé
+    "pool_recycle":  1800, # recycler après 30 min (évite EOF PostgreSQL)
 }
 
 _engine = create_engine(
