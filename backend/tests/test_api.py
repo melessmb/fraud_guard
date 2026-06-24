@@ -28,8 +28,8 @@ def test_create_tenant_with_admin(client):
     assert resp.json()["status"] == "created"
 
 
-def test_create_tenant_duplicate_key(client):
-    payload = {"name": "Bank A", "country": "CI", "environment": "sandbox", "api_key": "dup-key-001"}
+def test_create_tenant_duplicate_keycloak_id(client):
+    payload = {"name": "Bank A", "country": "CI", "environment": "sandbox", "keycloak_id": "dup-kc-id-001"}
     client.post("/api/v1/tenants", json=payload, headers=bearer("admin"))
     resp = client.post("/api/v1/tenants", json={**payload, "name": "Bank B"}, headers=bearer("admin"))
     assert resp.status_code == 409
@@ -61,7 +61,7 @@ def test_score_transaction_valid(client, test_tenant):
             "ip_address": "41.203.72.1",
             "timestamp": "2024-01-15T14:30:00",
         },
-        headers={"X-API-Key": TENANT_API_KEY},
+        headers=bearer("tenant_admin"),
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -84,7 +84,7 @@ def test_score_wrong_tenant_id(client, test_tenant):
             "ip_address": "1.2.3.4",
             "timestamp": "2024-01-15T10:00:00",
         },
-        headers={"X-API-Key": TENANT_API_KEY},
+        headers=bearer("tenant_admin"),
     )
     assert resp.status_code == 403
 
@@ -123,7 +123,9 @@ def test_get_tenant_metrics_not_found(client):
 def test_get_alerts(client, test_tenant):
     resp = client.get(f"/api/v1/tenants/{test_tenant.id}/alerts", headers=bearer("admin"))
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert "items" in data
+    assert isinstance(data["items"], list)
 
 
 def test_update_policy_requires_admin(client, test_tenant):

@@ -34,8 +34,8 @@ def test_score_wrong_api_key(client):
     assert resp.status_code == 401
 
 
-def test_duplicate_api_key_rejected(client):
-    payload = {"name": "Banque Test", "country": "SN", "environment": "sandbox", "api_key": "unique-key-sn-001"}
+def test_duplicate_keycloak_id_rejected(client):
+    payload = {"name": "Banque Test", "country": "SN", "environment": "sandbox", "keycloak_id": "unique-kc-sn-001"}
     r1 = client.post("/api/v1/tenants", json=payload, headers=bearer("admin"))
     assert r1.status_code == 201
     r2 = client.post("/api/v1/tenants", json={**payload, "name": "Autre Banque"}, headers=bearer("admin"))
@@ -54,7 +54,7 @@ def test_tenant_id_isolation(client, test_tenant):
         "device_fingerprint": "fp-abc123",
         "ip_address": "1.2.3.4",
         "timestamp": "2024-01-15T10:00:00",
-    }, headers={"X-API-Key": TENANT_API_KEY})
+    }, headers=bearer("tenant_admin"))
     assert resp.status_code == 403
 
 
