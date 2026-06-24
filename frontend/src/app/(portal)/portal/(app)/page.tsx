@@ -8,11 +8,12 @@ import { ShieldAlert, TrendingUp, CheckCircle, AlertTriangle, Zap, ArrowUpRight 
 import { PortalPageHeader } from "@/components/portal/page-header";
 
 interface TenantMetrics {
-  total_transactions_24h: number;
-  fraud_detected_24h: number;
-  fraud_rate_pct: number;
-  avg_score: number;
-  alerts_pending: number;
+  transaction_count: number;
+  fraud_count: number;
+  detection_rate: number;
+  false_positive_rate: number;
+  model_version: string;
+  tenant_id: number;
 }
 
 function StatCard({ icon: Icon, label, value, sub, color }: {
@@ -63,10 +64,10 @@ export default function PortalDashboard() {
         </div>
       ) : metrics ? (
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 mt-6">
-          <StatCard icon={TrendingUp}    label="Transactions analysées" value={metrics.total_transactions_24h.toLocaleString()} sub="dernières 24h" color="bg-blue-500" />
-          <StatCard icon={ShieldAlert}   label="Fraudes détectées"      value={metrics.fraud_detected_24h} sub="nouvelles alertes" color="bg-red-500" />
-          <StatCard icon={Zap}           label="Taux de fraude"         value={`${metrics.fraud_rate_pct.toFixed(2)} %`} sub="sur total transactions" color="bg-orange-500" />
-          <StatCard icon={CheckCircle}   label="Alertes en attente"     value={metrics.alerts_pending} sub="à traiter" color="bg-amber-500" />
+          <StatCard icon={TrendingUp}    label="Transactions analysées" value={metrics.transaction_count.toLocaleString()} sub="dernières 24h" color="bg-blue-500" />
+          <StatCard icon={ShieldAlert}   label="Fraudes détectées"      value={metrics.fraud_count} sub="nouvelles alertes" color="bg-red-500" />
+          <StatCard icon={Zap}           label="Taux de fraude"         value={`${(metrics.detection_rate * 100).toFixed(2)} %`} sub="sur total transactions" color="bg-orange-500" />
+          <StatCard icon={CheckCircle}   label="Transactions légitimes"  value={(metrics.transaction_count - metrics.fraud_count).toLocaleString()} sub="sans alerte" color="bg-green-500" />
         </div>
       ) : (
         <p className="text-muted-foreground mt-6">Impossible de charger les métriques.</p>
