@@ -54,3 +54,6 @@ infrastructure/terraform/.terraform.lock.hcl
 
 # Docker
 infrastructure/docker/backend/
+
+# Claude Code (CLI + agent) — fichiers locaux, ne pas versionner
+.claude/
