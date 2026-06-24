@@ -32,13 +32,17 @@ const NAV_ITEMS = [
 export function PortalSidebar() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { user, clearUser, primaryRole } = usePortalAuthStore();
+  const { user, clearUser, primaryRole, refreshToken } = usePortalAuthStore();
   const { sidebarCollapsed, toggleSidebar, setActiveTenantId } = useAppStore();
 
   const role = primaryRole();
 
   const handleLogout = async () => {
-    await fetch("/api/portal/auth/logout", { method: "POST" });
+    await fetch("/api/portal/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
     clearUser();
     setActiveTenantId(null);
     router.push("/portal/login");

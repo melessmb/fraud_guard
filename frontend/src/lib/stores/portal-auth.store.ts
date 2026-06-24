@@ -14,8 +14,9 @@ export interface UserInfo {
 interface PortalAuthState {
   user: UserInfo | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
-  setUser: (user: UserInfo, token: string) => void;
+  setUser: (user: UserInfo, token: string, refreshToken?: string) => void;
   clearUser: () => void;
   hasRole: (...roles: UserRole[]) => boolean;
   primaryRole: () => UserRole | null;
@@ -26,20 +27,21 @@ export const usePortalAuthStore = create<PortalAuthState>()(
     (set, get) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
 
-      setUser: (user, token) => {
+      setUser: (user, token, refreshToken) => {
         if (typeof window !== "undefined") {
           sessionStorage.setItem("fg_portal_session", token);
         }
-        set({ user, token, isAuthenticated: true });
+        set({ user, token, refreshToken: refreshToken ?? null, isAuthenticated: true });
       },
 
       clearUser: () => {
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("fg_portal_session");
         }
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
       },
 
       hasRole: (...roles) => {

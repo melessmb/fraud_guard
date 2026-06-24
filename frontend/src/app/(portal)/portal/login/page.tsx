@@ -63,7 +63,7 @@ export default function PortalLoginPage() {
         roles,
         tenantId: undefined,
       };
-      setUser(userInfo, data.access_token);
+      setUser(userInfo, data.access_token, data.refresh_token);
 
       // Résoudre le tenant — bloquant : sans tenant résolu on ne rentre pas dans le portail
       const tenantRes = await fetch("/api/v1/my-tenant", {

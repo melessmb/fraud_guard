@@ -1,8 +1,7 @@
-import asyncio
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core import task_registry
 from app.core.auth import get_current_tenant
 from app.core.cache import check_rate_limit
 from app.core.database import get_db
@@ -90,7 +89,7 @@ async def score_transaction_endpoint(
             .first()
         )
         if webhook and _FRAUD_EVENT in (webhook.events or []):
-            asyncio.create_task(
+            task_registry.track(
                 call_hook(webhook.url, alert_payload, secret=webhook.secret)
             )
 

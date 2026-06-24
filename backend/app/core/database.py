@@ -6,9 +6,23 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from app.core.config import settings
 
 # check_same_thread est spécifique à SQLite (utilisé uniquement en tests)
-_connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+_is_sqlite = settings.database_url.startswith("sqlite")
+_connect_args = {"check_same_thread": False} if _is_sqlite else {}
 
-_engine = create_engine(settings.database_url, connect_args=_connect_args, pool_pre_ping=True)
+# Pool de connexions dimensionné pour la production (ignoré par SQLite)
+_pool_kwargs: dict = {} if _is_sqlite else {
+    "pool_size":     5,    # connexions permanentes
+    "max_overflow":  10,   # connexions supplémentaires sous charge
+    "pool_timeout":  30,   # secondes avant TimeoutError si toutes prises
+    "pool_recycle":  1800, # recycler les connexions après 30 min (évite EOF PostgreSQL)
+}
+
+_engine = create_engine(
+    settings.database_url,
+    connect_args=_connect_args,
+    pool_pre_ping=True,   # vérifie la connexion avant utilisation
+    **_pool_kwargs,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
 Base = declarative_base()

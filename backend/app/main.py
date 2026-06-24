@@ -1,10 +1,13 @@
 import warnings
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.api import auth as auth_api
 from app.api import compliance as compliance_api
@@ -16,9 +19,12 @@ from app.api import fraud as fraud_api
 from app.api import hooks as hooks_api
 from app.api import model as model_api
 from app.api import tenants as tenants_api
+from app.core import task_registry
+from app.core.cache import get_redis
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import get_db, init_db
 from app.core.logging_config import setup_logging
+from app.core.middleware import RequestIdMiddleware
 
 _WEAK_KEYS = frozenset({
     "CHANGE_ME",
@@ -32,7 +38,6 @@ _WEAK_KEYS = frozenset({
 
 def _validate_secret_key() -> None:
     key = settings.secret_key
-    # En production : clé absente de la liste noire ET longueur >= 32 caractères
     is_weak = key in _WEAK_KEYS or (not settings.debug and len(key) < 32)
     if is_weak:
         msg = (
@@ -51,12 +56,11 @@ async def lifespan(app: FastAPI):
     _validate_secret_key()
     init_db()
     yield
+    # Shutdown gracieux : attendre les webhooks fire-and-forget en cours
+    await task_registry.drain(timeout=10.0)
 
 
 # Swagger/ReDoc désactivés en production
-_docs_url = "/docs" if settings.debug else None
-_redoc_url = "/redoc" if settings.debug else None
-
 app = FastAPI(
     title=settings.app_name,
     description="API de detection de fraude temps reel — Cote d'Ivoire & Senegal",
@@ -66,6 +70,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Middlewares ───────────────────────────────────────────────────────────────
+
+app.add_middleware(RequestIdMiddleware)
+
+_origins = (
+    ["*"]
+    if settings.debug
+    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=not settings.debug,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── Swagger (debug only) ──────────────────────────────────────────────────────
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui() -> HTMLResponse:
@@ -79,25 +101,53 @@ async def custom_swagger_ui() -> HTMLResponse:
         swagger_css_url="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css",
     )
 
-# CORS : wildcard uniquement en debug, liste blanche en production
-_origins = (
-    ["*"]
-    if settings.debug
-    else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=not settings.debug,  # credentials=True interdit avec allow_origins=["*"]
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# ── Health checks ─────────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["system"])
-def health() -> dict:
+@app.get("/health/live", tags=["system"])
+def liveness() -> dict:
+    """Liveness probe — le processus est vivant."""
     return {"status": "ok", "version": "1.0.0"}
 
+
+@app.get("/health/ready", tags=["system"])
+def readiness(db: Session = Depends(get_db)) -> JSONResponse:
+    """Readiness probe — vérifie DB, Redis et Keycloak."""
+    checks: dict[str, str] = {}
+
+    # Base de données
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        checks["database"] = f"error: {exc}"
+
+    # Redis
+    try:
+        get_redis().ping()
+        checks["redis"] = "ok"
+    except Exception as exc:
+        checks["redis"] = f"error: {exc}"
+
+    # Keycloak (OIDC discovery endpoint — léger)
+    try:
+        kc_url = (
+            f"{settings.keycloak_url}/realms/{settings.keycloak_realm}"
+            "/.well-known/openid-configuration"
+        )
+        resp = httpx.get(kc_url, timeout=3, follow_redirects=False)
+        checks["keycloak"] = "ok" if resp.is_success else f"error: HTTP {resp.status_code}"
+    except Exception as exc:
+        checks["keycloak"] = f"error: {exc}"
+
+    all_ok = all(v == "ok" for v in checks.values())
+    return JSONResponse(
+        content={"status": "ready" if all_ok else "degraded", "checks": checks},
+        status_code=200 if all_ok else 503,
+    )
+
+
+# ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(fraud_api.router,      prefix="/api/v1", tags=["scoring"])
 app.include_router(tenants_api.router,    prefix="/api/v1", tags=["tenants"])
@@ -107,5 +157,5 @@ app.include_router(model_api.router,      prefix="/api/v1", tags=["model"])
 app.include_router(compliance_api.router, prefix="/api/v1", tags=["compliance"])
 app.include_router(export_api.router,     prefix="/api/v1", tags=["export"])
 app.include_router(events_api.router,     prefix="/api/v1", tags=["events"])
-app.include_router(users_api.router,       prefix="/api/v1", tags=["users"])
+app.include_router(users_api.router,      prefix="/api/v1", tags=["users"])
 app.include_router(permissions_api.router, prefix="/api/v1", tags=["permissions"])
