@@ -18,6 +18,10 @@
         "description": "Administrateur d'une entreprise cliente (banque, op\u00e9rateur mobile money)"
       },
       {
+        "name": "developer",
+        "description": "\u00c9quipe technique d'une entreprise cliente \u2014 scoring, webhooks, configuration"
+      },
+      {
         "name": "compliance",
         "description": "\u00c9quipe conformit\u00e9 d'une entreprise cliente \u2014 alertes et rapports BCEAO"
       },

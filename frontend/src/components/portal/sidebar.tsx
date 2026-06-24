@@ -7,24 +7,35 @@ import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, AlertTriangle, BarChart2, Zap,
-  FileText, Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight, ArrowLeftRight,
+  FileText, Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight,
+  ArrowLeftRight, Users,
 } from "lucide-react";
 
+const ROLE_LABEL: Record<string, string> = {
+  tenant_admin: "Admin",
+  developer:    "Développeur",
+  compliance:   "Conformité",
+  tenant:       "Opérateur",
+};
+
 const NAV_ITEMS = [
-  { label: "Tableau de bord",   href: "/portal",                  icon: LayoutDashboard },
-  { label: "Transactions",      href: "/portal/transactions",      icon: ArrowLeftRight },
-  { label: "Mes alertes",       href: "/portal/alertes",           icon: AlertTriangle },
-  { label: "Analytique",        href: "/portal/analytique",        icon: BarChart2 },
-  { label: "Scoring",           href: "/portal/scoring",           icon: Zap },
-  { label: "Conformité BCEAO",  href: "/portal/conformite",        icon: FileText },
-  { label: "Configuration",     href: "/portal/configuration",     icon: Settings },
+  { label: "Tableau de bord",  href: "/portal",               icon: LayoutDashboard, roles: null },
+  { label: "Transactions",     href: "/portal/transactions",   icon: ArrowLeftRight,  roles: null },
+  { label: "Mes alertes",      href: "/portal/alertes",        icon: AlertTriangle,   roles: null },
+  { label: "Analytique",       href: "/portal/analytique",     icon: BarChart2,       roles: null },
+  { label: "Scoring",          href: "/portal/scoring",        icon: Zap,             roles: null },
+  { label: "Conformité BCEAO", href: "/portal/conformite",     icon: FileText,        roles: null },
+  { label: "Configuration",    href: "/portal/configuration",  icon: Settings,        roles: null },
+  { label: "Équipe",           href: "/portal/equipe",         icon: Users,           roles: ["tenant_admin"] },
 ];
 
 export function PortalSidebar() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { user, clearUser } = usePortalAuthStore();
+  const { user, clearUser, primaryRole } = usePortalAuthStore();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
+
+  const role = primaryRole();
 
   const handleLogout = async () => {
     await fetch("/api/portal/auth/logout", { method: "POST" });
@@ -33,6 +44,10 @@ export function PortalSidebar() {
   };
 
   const initials = user?.username.slice(0, 2).toUpperCase() ?? "??";
+
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.roles || (role && item.roles.includes(role))
+  );
 
   return (
     <aside className={cn(
@@ -62,7 +77,7 @@ export function PortalSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = item.href === "/portal" ? pathname === "/portal" : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -100,7 +115,7 @@ export function PortalSidebar() {
             {!sidebarCollapsed && (
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-foreground truncate">{user.username}</div>
-                <div className="text-[10px] text-muted-foreground">tenant_admin</div>
+                <div className="text-[10px] text-muted-foreground">{ROLE_LABEL[role ?? ""] ?? role}</div>
               </div>
             )}
           </div>

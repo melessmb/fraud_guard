@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type UserRole = "admin" | "tenant_admin" | "compliance" | "tenant";
+export type UserRole = "admin" | "tenant_admin" | "developer" | "compliance" | "tenant";
 
 export interface UserInfo {
   sub: string;
@@ -51,7 +51,7 @@ export const usePortalAuthStore = create<PortalAuthState>()(
       primaryRole: () => {
         const { user } = get();
         if (!user) return null;
-        const order: UserRole[] = ["tenant_admin", "compliance", "tenant"];
+        const order: UserRole[] = ["tenant_admin", "developer", "compliance", "tenant"];
         return order.find((r) => user.roles.includes(r)) ?? null;
       },
     }),

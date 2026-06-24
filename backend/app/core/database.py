@@ -58,5 +58,7 @@ def init_db() -> None:
     import app.models.tenant_scoring_hook # noqa: F401
     import app.models.tenant_webhook      # noqa: F401
     import app.models.tenant_permission   # noqa: F401
+    import app.models.tenant_user         # noqa: F401
+    import app.models.tenant_feature      # noqa: F401
     Base.metadata.create_all(bind=_engine)
     _apply_migrations()

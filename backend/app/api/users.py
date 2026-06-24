@@ -1,7 +1,6 @@
 """Gestion des utilisateurs — création/invitation, liste, révocation."""
 import secrets
 import string
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
@@ -9,33 +8,34 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme, require_role
+from app.core.roles import ADMIN, TENANT_ADMIN, TENANT_ADMIN_ASSIGNABLE
 from app.models.tenant import Tenant
+from app.models.tenant_user import TenantUser
 from app.services import keycloak_admin
 
 router = APIRouter()
 
-require_admin = require_role("admin")
+require_admin = require_role(ADMIN)
 
 
 def _require_admin_or_tenant_admin(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Autorise admin OU tenant_admin sur leur propre tenant."""
     payload = decode_keycloak_token(token)
     roles: list[str] = payload.get("realm_access", {}).get("roles", [])
-    if "admin" not in roles and "tenant_admin" not in roles:
+    if ADMIN not in roles and TENANT_ADMIN not in roles:
         raise HTTPException(status_code=403, detail="Rôle 'admin' ou 'tenant_admin' requis")
     return payload
 
 
 def _get_caller_tenant(payload: dict, db: Session) -> Tenant | None:
-    """Retourne le tenant du caller si tenant_admin, None si admin."""
     roles: list[str] = payload.get("realm_access", {}).get("roles", [])
-    if "admin" in roles:
-        return None  # super-admin : accès à tout
+    if ADMIN in roles:
+        return None
     kid = payload.get("sub", "")
-    return db.query(Tenant).filter(Tenant.keycloak_id == kid).first()
+    from app.core.auth import _resolve_tenant
+    return _resolve_tenant(kid, db)
 
 
 def _gen_password(length: int = 12) -> str:
@@ -45,14 +45,12 @@ def _gen_password(length: int = 12) -> str:
 
 # ── Schémas ───────────────────────────────────────────────────────────────────
 
-ALLOWED_ROLES = {"tenant", "tenant_admin", "compliance"}
-
 class InviteUserRequest(BaseModel):
     username: str
     email: EmailStr
     role: str
     tenant_id: int
-    password: str | None = None   # généré automatiquement si absent
+    password: str | None = None
 
 
 class InviteUserResponse(BaseModel):
@@ -74,7 +72,7 @@ class UserOut(BaseModel):
     tenant_name: str
 
 
-# ── Endpoints ────────────────────────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/admin/users/invite", response_model=InviteUserResponse)
 def invite_user(
@@ -82,15 +80,27 @@ def invite_user(
     payload: dict = Depends(_require_admin_or_tenant_admin),
     db: Session = Depends(get_db),
 ) -> InviteUserResponse:
-    """Crée un utilisateur Keycloak et le lie au tenant en base."""
-    if body.role not in ALLOWED_ROLES:
-        raise HTTPException(status_code=400, detail=f"Rôle invalide. Valeurs : {ALLOWED_ROLES}")
+    """Crée un utilisateur Keycloak et le lie au tenant en base.
+
+    - admin FraudGuard → peut assigner n'importe quel rôle y compris tenant_admin
+    - tenant_admin → peut assigner uniquement developer, compliance, tenant
+    """
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
+    caller_is_admin = ADMIN in roles
+
+    allowed_roles = ({TENANT_ADMIN} | TENANT_ADMIN_ASSIGNABLE) if caller_is_admin else TENANT_ADMIN_ASSIGNABLE
+
+    if body.role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Vous ne pouvez pas attribuer le rôle '{body.role}'. "
+                   f"Rôles autorisés : {sorted(allowed_roles)}",
+        )
 
     tenant = db.query(Tenant).filter(Tenant.id == body.tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant introuvable")
 
-    # tenant_admin ne peut inviter que dans son propre tenant
     caller_tenant = _get_caller_tenant(payload, db)
     if caller_tenant and caller_tenant.id != body.tenant_id:
         raise HTTPException(status_code=403, detail="Vous ne pouvez inviter que dans votre tenant")
@@ -105,6 +115,19 @@ def invite_user(
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+    # Lier le nouvel utilisateur au tenant
+    existing = db.query(TenantUser).filter(
+        TenantUser.keycloak_user_id == keycloak_id,
+        TenantUser.tenant_id == body.tenant_id,
+    ).first()
+    if not existing:
+        db.add(TenantUser(
+            tenant_id=body.tenant_id,
+            keycloak_user_id=keycloak_id,
+            role=body.role,
+        ))
+        db.commit()
 
     return InviteUserResponse(
         keycloak_id=keycloak_id,
@@ -122,7 +145,7 @@ def list_tenant_users(
     payload: dict = Depends(_require_admin_or_tenant_admin),
     db: Session = Depends(get_db),
 ) -> list[UserOut]:
-    """Liste les utilisateurs d'un tenant."""
+    """Liste les utilisateurs d'un tenant (via tenant_users + owner du tenant)."""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant introuvable")
@@ -131,50 +154,29 @@ def list_tenant_users(
     if caller_tenant and caller_tenant.id != tenant_id:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    # Cherche tous les users Keycloak qui ont ce tenant lié
-    # On cherche les users dont le keycloak_id correspond aux roles liés à ce tenant
-    all_tenants_with_kid: list[Any] = db.query(Tenant).filter(Tenant.id == tenant_id).all()
+    links = db.query(TenantUser).filter(TenantUser.tenant_id == tenant_id).all()
+    kid_role_map = {link.keycloak_user_id: link.role for link in links}
 
-    # Récupère les users des rôles tenant, tenant_admin, compliance dans Keycloak
-    # et filtre ceux dont on a un lien avec ce tenant (via keycloak_id sur le tenant)
-    users: list[dict] = []
-    for role in ("tenant", "tenant_admin", "compliance"):
-        role_users = keycloak_admin.list_users_by_role(role)
-        for u in role_users:
-            u["roles"] = [role]
-            users.append(u)
+    # Inclut l'owner du tenant s'il n'est pas déjà dans la liste
+    if tenant.keycloak_id and tenant.keycloak_id not in kid_role_map:
+        kid_role_map[tenant.keycloak_id] = TENANT_ADMIN
 
-    # Déduplique par keycloak_id et enrichit avec les rôles cumulés
-    seen: dict[str, dict] = {}
-    for u in users:
-        kid = u["keycloak_id"]
-        if kid in seen:
-            seen[kid]["roles"] = list(set(seen[kid]["roles"] + u["roles"]))
-        else:
-            seen[kid] = u
+    if not kid_role_map:
+        return []
 
-    # Filtre : garde les users dont le keycloak_id est enregistré dans la table tenants
-    # pour ce tenant_id (keycloak_id = UUID du user Keycloak principal du tenant)
-    # OU si le tenant a ce user lié
-    tenant_kid = tenant.keycloak_id
-
-    # Pour l'instant on retourne tous les users qui ont un rôle tenant/tenant_admin/compliance
-    # et qui sont "liés" à ce tenant via le champ keycloak_id du tenant
-    # La liaison réelle se fait par le claim tenant_id dans le token (Keycloak mapper)
-    # Ici on retourne les users du tenant principal + ceux invités via ce tenant
-    result = []
-    for u in seen.values():
-        result.append(UserOut(
+    kc_users = keycloak_admin.list_users_by_ids(list(kid_role_map.keys()))
+    return [
+        UserOut(
             keycloak_id=u["keycloak_id"],
             username=u["username"],
             email=u.get("email", ""),
             enabled=u.get("enabled", True),
-            roles=u["roles"],
+            roles=[kid_role_map.get(u["keycloak_id"], "tenant")],
             tenant_id=tenant_id,
             tenant_name=tenant.name,
-        ))
-
-    return result
+        )
+        for u in kc_users
+    ]
 
 
 @router.get("/admin/users", response_model=list[UserOut])
@@ -184,30 +186,48 @@ def list_all_users(
 ) -> list[UserOut]:
     """Liste tous les utilisateurs (admin uniquement)."""
     tenants = db.query(Tenant).all()
-    tenant_map = {t.keycloak_id: t for t in tenants if t.keycloak_id}
+    tenant_id_map = {t.id: t for t in tenants}
+    owner_map = {t.keycloak_id: t for t in tenants if t.keycloak_id}
 
+    all_links = db.query(TenantUser).all()
+    tenant_user_map: dict[str, tuple[int, str]] = {
+        link.keycloak_user_id: (link.tenant_id, link.role)
+        for link in all_links
+    }
+
+    all_kids = set(owner_map.keys()) | set(tenant_user_map.keys())
+    if not all_kids:
+        return []
+
+    kc_users = keycloak_admin.list_users_by_ids(list(all_kids))
     result = []
-    for role in ("tenant", "tenant_admin", "compliance", "admin"):
-        for u in keycloak_admin.list_users_by_role(role):
-            tenant = tenant_map.get(u["keycloak_id"])
-            result.append(UserOut(
-                keycloak_id=u["keycloak_id"],
-                username=u["username"],
-                email=u.get("email", ""),
-                enabled=u.get("enabled", True),
-                roles=[role],
-                tenant_id=tenant.id if tenant else 0,
-                tenant_name=tenant.name if tenant else "—",
-            ))
+    seen: set[str] = set()
+    for u in kc_users:
+        kid = u["keycloak_id"]
+        if kid in seen:
+            continue
+        seen.add(kid)
 
-    # Déduplique
-    seen: dict[str, UserOut] = {}
-    for u in result:
-        if u.keycloak_id in seen:
-            seen[u.keycloak_id].roles = list(set(seen[u.keycloak_id].roles + u.roles))
+        if kid in tenant_user_map:
+            tid, role = tenant_user_map[kid]
+            t = tenant_id_map.get(tid)
+        elif kid in owner_map:
+            t = owner_map[kid]
+            role = TENANT_ADMIN
+            tid = t.id
         else:
-            seen[u.keycloak_id] = u
-    return list(seen.values())
+            continue
+
+        result.append(UserOut(
+            keycloak_id=kid,
+            username=u["username"],
+            email=u.get("email", ""),
+            enabled=u.get("enabled", True),
+            roles=[role],
+            tenant_id=tid,
+            tenant_name=t.name if t else "—",
+        ))
+    return result
 
 
 @router.delete("/admin/users/{keycloak_id}", status_code=204)
@@ -217,6 +237,15 @@ def revoke_user(
     db: Session = Depends(get_db),
 ) -> None:
     """Désactive un utilisateur (soft delete — préserve l'audit trail)."""
+    caller_tenant = _get_caller_tenant(payload, db)
+    if caller_tenant:
+        link = db.query(TenantUser).filter(
+            TenantUser.keycloak_user_id == keycloak_id,
+            TenantUser.tenant_id == caller_tenant.id,
+        ).first()
+        if not link:
+            raise HTTPException(status_code=403, detail="Utilisateur non trouvé dans votre tenant")
+
     try:
         keycloak_admin.disable_user(keycloak_id)
     except Exception as exc:

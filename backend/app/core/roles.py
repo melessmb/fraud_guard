@@ -10,12 +10,13 @@ from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
 # ── Constantes ────────────────────────────────────────────────────────────────
 ADMIN        = "admin"
 TENANT_ADMIN = "tenant_admin"
+DEVELOPER    = "developer"
 COMPLIANCE   = "compliance"
 TENANT       = "tenant"
 
-PLATFORM_ROLES      = frozenset({ADMIN})
-TENANT_COMPANY_ROLES = frozenset({TENANT_ADMIN, COMPLIANCE, TENANT})
-ALL_ROLES           = PLATFORM_ROLES | TENANT_COMPANY_ROLES
+PLATFORM_ROLES       = frozenset({ADMIN})
+TENANT_COMPANY_ROLES = frozenset({TENANT_ADMIN, DEVELOPER, COMPLIANCE, TENANT})
+ALL_ROLES            = PLATFORM_ROLES | TENANT_COMPANY_ROLES
 
 # Rôles qui peuvent déclencher des actions d'écriture sur un tenant
 TENANT_WRITE_ROLES = frozenset({ADMIN, TENANT_ADMIN})
@@ -23,11 +24,14 @@ TENANT_WRITE_ROLES = frozenset({ADMIN, TENANT_ADMIN})
 # Rôles qui peuvent voir les données conformité
 COMPLIANCE_READ_ROLES = frozenset({ADMIN, TENANT_ADMIN, COMPLIANCE})
 
+# Rôles que tenant_admin peut attribuer (pas tenant_admin lui-même — escalade de privilèges)
+TENANT_ADMIN_ASSIGNABLE = frozenset({DEVELOPER, COMPLIANCE, TENANT})
+
 
 def get_user_role(payload: dict) -> str:
     """Retourne le rôle principal de l'utilisateur (ordre de priorité)."""
     roles = set(payload.get("realm_access", {}).get("roles", []))
-    for role in (ADMIN, TENANT_ADMIN, COMPLIANCE, TENANT):
+    for role in (ADMIN, TENANT_ADMIN, DEVELOPER, COMPLIANCE, TENANT):
         if role in roles:
             return role
     return TENANT
