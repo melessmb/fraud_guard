@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface AppState {
-  activeTenantId: number;
+  activeTenantId: number | null;
   theme: "light" | "dark" | "system";
   locale: "fr" | "en";
   sidebarCollapsed: boolean;
-  setActiveTenantId: (id: number) => void;
+  setActiveTenantId: (id: number | null) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
   setLocale: (locale: "fr" | "en") => void;
   toggleSidebar: () => void;
@@ -15,7 +15,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      activeTenantId: 1,
+      activeTenantId: null,
       theme: "light",
       locale: "fr",
       sidebarCollapsed: false,
@@ -25,6 +25,14 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
     }),
-    { name: "fraudguard-app" }
+    {
+      name: "fraudguard-app",
+      // activeTenantId n'est jamais persisté — recalculé à chaque session via /my-tenant
+      partialize: (state) => ({
+        theme: state.theme,
+        locale: state.locale,
+        sidebarCollapsed: state.sidebarCollapsed,
+      }),
+    }
   )
 );

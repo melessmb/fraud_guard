@@ -33,13 +33,14 @@ export function PortalSidebar() {
   const pathname = usePathname();
   const router   = useRouter();
   const { user, clearUser, primaryRole } = usePortalAuthStore();
-  const { sidebarCollapsed, toggleSidebar } = useAppStore();
+  const { sidebarCollapsed, toggleSidebar, setActiveTenantId } = useAppStore();
 
   const role = primaryRole();
 
   const handleLogout = async () => {
     await fetch("/api/portal/auth/logout", { method: "POST" });
     clearUser();
+    setActiveTenantId(null);
     router.push("/portal/login");
   };
 

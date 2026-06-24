@@ -49,7 +49,7 @@ export default function PortalLoginPage() {
       const roles = ((payload as any).realm_access?.roles ?? []) as UserRole[];
 
       // Ce portail est réservé aux opérateurs clients (tenant, compliance)
-      const allowedRoles: UserRole[] = ["tenant", "compliance", "tenant_admin"];
+      const allowedRoles: UserRole[] = ["tenant", "compliance", "tenant_admin", "developer"];
       const hasPortalRole = roles.some((r) => allowedRoles.includes(r));
       if (!hasPortalRole) {
         setError("Ce portail est réservé aux opérateurs clients. Utilisez l'espace FraudGuard.");
@@ -65,14 +65,16 @@ export default function PortalLoginPage() {
       };
       setUser(userInfo, data.access_token);
 
-      // Résoudre le tenant de cet utilisateur
+      // Résoudre le tenant — bloquant : sans tenant résolu on ne rentre pas dans le portail
       const tenantRes = await fetch("/api/v1/my-tenant", {
         headers: { "Authorization": `Bearer ${data.access_token}` },
       });
-      if (tenantRes.ok) {
-        const tenantData = await tenantRes.json();
-        setActiveTenantId(tenantData.id);
+      if (!tenantRes.ok) {
+        setError("Impossible de résoudre votre organisation. Contactez votre administrateur.");
+        return;
       }
+      const tenantData = await tenantRes.json();
+      setActiveTenantId(tenantData.id);
 
       router.push("/portal");
     } catch {
