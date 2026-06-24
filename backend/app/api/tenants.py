@@ -386,20 +386,30 @@ def _to_alert_response(l: FraudLog) -> AlertResponse:
     )
 
 
-@router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse], dependencies=[Depends(require_tenant_access)])
+@router.get("/tenants/{tenant_id}/alerts", dependencies=[Depends(require_tenant_access)])
 def get_alerts(
     tenant_id: int,
-    limit: int = Query(default=50, ge=1, le=500),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
     status: Optional[str] = Query(default=None, description="open | under_review | validated | rejected"),
+    risk_level: Optional[str] = Query(default=None, description="low | medium | high | critical"),
     db: Session = Depends(get_db),
-) -> List[AlertResponse]:
+) -> dict:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     q = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True))
     if status:
         q = q.filter(FraudLog.status == status)
-    logs = q.order_by(FraudLog.created_at.desc()).limit(limit).all()
-    return [_to_alert_response(l) for l in logs]
+    if risk_level:
+        q = q.filter(FraudLog.risk_level == risk_level)
+    total = q.count()
+    logs = q.order_by(FraudLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": [_to_alert_response(l) for l in logs],
+    }
 
 
 @router.get("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_tenant_access)])

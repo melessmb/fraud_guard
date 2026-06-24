@@ -104,4 +104,13 @@
   .status-online  { @apply bg-success; }
   .status-offline { @apply bg-danger; }
   .status-pending { @apply bg-warning; }
+
+  /* Toast progress bar */
+  @keyframes shrink {
+    from { width: 100%; }
+    to   { width: 0%; }
+  }
+  .animate-shrink {
+    animation: shrink linear forwards;
+  }
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
-import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
+import { useToast } from "@/lib/stores/toast.store";
 import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Transaction {
@@ -35,8 +35,8 @@ const RISK_BADGE: Record<string, string> = {
 };
 
 export default function PortalTransactionsPage() {
-  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
+  const toast = useToast();
   const [data, setData] = useState<PagedResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -53,7 +53,7 @@ export default function PortalTransactionsPage() {
       if (risk)         params.set("risk_level", risk);
       const res = await portalFetch(`/api/v1/tenants/${tenantId}/transactions?${params}`);
       if (res.ok) setData(await res.json());
-    } catch (e) { console.error(e); }
+    } catch { toast.error("Impossible de charger les transactions."); }
     finally { setLoading(false); }
   }, [user]);
 

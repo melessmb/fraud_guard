@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { usePortalSSE } from "@/lib/hooks/use-portal-sse";
 import { AlertToastContainer } from "@/components/notifications/alert-toast";
+import { AppToastContainer } from "@/components/ui/app-toast";
 
 function PortalSSEProvider({ children }: { children: React.ReactNode }) {
   usePortalSSE();
@@ -11,6 +12,7 @@ function PortalSSEProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <AlertToastContainer />
+      <AppToastContainer />
     </>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { portalFetch } from "@/lib/api/portal-fetch";
-import { usePortalAuthStore } from "@/lib/stores/portal-auth.store";
 import { useAppStore } from "@/lib/stores/app.store";
+import { useToast } from "@/lib/stores/toast.store";
 
 interface MetricsData {
   transaction_count: number;
@@ -14,8 +14,8 @@ interface MetricsData {
 }
 
 export default function PortalAnalytiquePage() {
-  const { user } = usePortalAuthStore();
   const { activeTenantId } = useAppStore();
+  const toast = useToast();
   const [m24, setM24] = useState<MetricsData | null>(null);
   const [m168, setM168] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export default function PortalAnalytiquePage() {
       portalFetch(`/api/v1/tenants/${tenantId}/metrics?hours=24`).then(r => r.json()),
       portalFetch(`/api/v1/tenants/${tenantId}/metrics?hours=168`).then(r => r.json()),
     ]).then(([d24, d168]) => { setM24(d24); setM168(d168); })
-      .catch(console.error)
+      .catch(() => toast.error("Impossible de charger les métriques."))
       .finally(() => setLoading(false));
   }, [user]);
 
