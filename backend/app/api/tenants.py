@@ -604,7 +604,7 @@ def list_transactions(
     date_from: Optional[datetime] = Query(default=None),
     date_to: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
-    _token: dict = Depends(require_admin),
+    _access: None = Depends(require_tenant_access),
 ) -> TransactionListResponse:
     q = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id)
     if is_fraud is not None:
@@ -632,7 +632,7 @@ def get_transaction(
     tenant_id: int,
     transaction_id: str,
     db: Session = Depends(get_db),
-    _token: dict = Depends(require_admin),
+    _access: None = Depends(require_tenant_access),
 ) -> TransactionResponse:
     row = db.query(FraudLog).filter(
         FraudLog.tenant_id == tenant_id,
