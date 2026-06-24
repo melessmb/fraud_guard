@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
-from app.core.auth import get_current_tenant
+from app.core.auth import get_current_tenant, require_tenant_access
 from app.core.audit import log_audit
 from app.core.database import get_db
 from app.core.security import hash_api_key
@@ -75,7 +75,7 @@ def list_tenants(db: Session = Depends(get_db)) -> List[TenantResponse]:
     return [TenantResponse.model_validate(t) for t in db.query(Tenant).all()]
 
 
-@router.get("/tenants/{tenant_id}", response_model=TenantResponse, dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}", response_model=TenantResponse, dependencies=[Depends(require_tenant_access)])
 def get_tenant(tenant_id: int, db: Session = Depends(get_db)) -> TenantResponse:
     t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not t:
@@ -165,7 +165,7 @@ def revoke_api_key(tenant_id: int, db: Session = Depends(get_db)) -> None:
     )
 
 
-@router.get("/tenants/{tenant_id}/api-key/status", dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/api-key/status", dependencies=[Depends(require_tenant_access)])
 def get_api_key_status(tenant_id: int, db: Session = Depends(get_db)) -> dict:
     """Indique si le tenant possède une API key active (sans révéler le hash)."""
     t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -176,7 +176,7 @@ def get_api_key_status(tenant_id: int, db: Session = Depends(get_db)) -> dict:
 
 # ── Policies ──────────────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
 def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
@@ -194,7 +194,7 @@ def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
     )
 
 
-@router.post("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_admin)])
+@router.post("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
 def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)) -> PolicyConfig:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
@@ -213,7 +213,7 @@ def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(ge
 
 # ── Metrics & Alerts ──────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/metrics", response_model=MetricsResponse, dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/metrics", response_model=MetricsResponse, dependencies=[Depends(require_tenant_access)])
 def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=168), db: Session = Depends(get_db)) -> MetricsResponse:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
@@ -233,7 +233,7 @@ def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=1
     )
 
 
-@router.get("/tenants/{tenant_id}/analytics", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/analytics", response_model=AnalyticsResponse, dependencies=[Depends(require_tenant_access)])
 def get_tenant_analytics(
     tenant_id: int,
     days: int = Query(default=30, ge=7, le=365),
@@ -355,7 +355,7 @@ def _to_alert_response(l: FraudLog) -> AlertResponse:
     )
 
 
-@router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse], dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/alerts", response_model=List[AlertResponse], dependencies=[Depends(require_tenant_access)])
 def get_alerts(
     tenant_id: int,
     limit: int = Query(default=50, ge=1, le=500),
@@ -371,7 +371,7 @@ def get_alerts(
     return [_to_alert_response(l) for l in logs]
 
 
-@router.get("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_tenant_access)])
 def get_alert(tenant_id: int, alert_id: int, db: Session = Depends(get_db)) -> AlertResponse:
     row = db.query(FraudLog).filter(
         FraudLog.id == alert_id, FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True)
@@ -381,13 +381,13 @@ def get_alert(tenant_id: int, alert_id: int, db: Session = Depends(get_db)) -> A
     return _to_alert_response(row)
 
 
-@router.patch("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_admin)])
+@router.patch("/tenants/{tenant_id}/alerts/{alert_id}", response_model=AlertResponse, dependencies=[Depends(require_tenant_access)])
 def update_alert_status(
     tenant_id: int,
     alert_id: int,
     body: AlertStatusUpdate,
     db: Session = Depends(get_db),
-    token: dict = Depends(require_admin),
+
 ) -> AlertResponse:
     row = db.query(FraudLog).filter(
         FraudLog.id == alert_id, FraudLog.tenant_id == tenant_id, FraudLog.is_fraud.is_(True)
@@ -398,7 +398,7 @@ def update_alert_status(
     row.status = body.status
     log_audit(
         db, action_type="ALERT_STATUS_UPDATE", actor_type="user",
-        actor_id=token.get("sub"), resource_type="alert", resource_id=str(alert_id),
+        actor_id=None, resource_type="alert", resource_id=str(alert_id),
         tenant_id=tenant_id,
         details={"from": old_status, "to": body.status, "comment": body.comment},
     )
@@ -409,7 +409,7 @@ def update_alert_status(
 
 # ── Webhooks ──────────────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/webhooks", dependencies=[Depends(require_admin)])
+@router.get("/tenants/{tenant_id}/webhooks", dependencies=[Depends(require_tenant_access)])
 def get_webhook(tenant_id: int, db: Session = Depends(get_db)) -> dict:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")

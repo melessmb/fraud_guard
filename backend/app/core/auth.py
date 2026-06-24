@@ -5,6 +5,29 @@ from app.core.database import get_db
 from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
 from app.models.tenant import Tenant
 
+_CLIENT_ROLES = {"tenant", "tenant_admin", "compliance"}
+
+
+def require_tenant_access(
+    tenant_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> None:
+    """Autorise admin (tous tenants) ou les rôles clients (leur propre tenant)."""
+    payload = decode_keycloak_token(token)
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
+
+    if "admin" in roles:
+        return  # super-admin : accès total
+
+    if not _CLIENT_ROLES.intersection(roles):
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    keycloak_id: str = payload.get("sub", "")
+    tenant = db.query(Tenant).filter(Tenant.keycloak_id == keycloak_id).first()
+    if not tenant or tenant.id != tenant_id:
+        raise HTTPException(status_code=403, detail="Accès refusé à ce tenant")
+
 
 async def get_current_tenant(
     token: str = Depends(oauth2_scheme),
