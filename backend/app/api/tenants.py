@@ -9,6 +9,8 @@ from app.core.admin_auth import require_admin
 from app.core.auth import get_current_tenant, require_tenant_access
 from app.core.audit import log_audit
 from app.core.database import get_db
+from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
+from app.core.roles import ADMIN, TENANT_ADMIN
 from app.core.security import hash_api_key
 from app.models.fraud_log import FraudLog
 from app.models.schemas import (
@@ -125,8 +127,31 @@ def delete_tenant(tenant_id: int, db: Session = Depends(get_db)) -> None:
 
 # ── API Keys ──────────────────────────────────────────────────────────────────
 
-@router.post("/tenants/{tenant_id}/api-key", dependencies=[Depends(require_admin)])
-def generate_api_key(tenant_id: int, db: Session = Depends(get_db)) -> dict:
+def _require_api_key_access(
+    tenant_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Autorise admin FraudGuard OU tenant_admin du tenant concerné."""
+    payload = decode_keycloak_token(token)
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
+    if ADMIN in roles:
+        return payload
+    if TENANT_ADMIN not in roles:
+        raise HTTPException(status_code=403, detail="Rôle 'admin' ou 'tenant_admin' requis")
+    from app.core.auth import _resolve_tenant
+    caller_tenant = _resolve_tenant(payload.get("sub", ""), db)
+    if not caller_tenant or caller_tenant.id != tenant_id:
+        raise HTTPException(status_code=403, detail="Vous ne pouvez gérer que votre propre API key")
+    return payload
+
+
+@router.post("/tenants/{tenant_id}/api-key")
+def generate_api_key(
+    tenant_id: int,
+    payload: dict = Depends(_require_api_key_access),
+    db: Session = Depends(get_db),
+) -> dict:
     """Génère une nouvelle API key pour le tenant. La clé en clair est retournée une
     seule fois — seul son hash HMAC est stocké en base."""
     t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -136,10 +161,11 @@ def generate_api_key(tenant_id: int, db: Session = Depends(get_db)) -> dict:
     plain_key = f"fg_{secrets.token_urlsafe(32)}"
     t.api_key = hash_api_key(plain_key)
     db.flush()
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
     log_audit(
         db,
         action_type="GENERATE_API_KEY",
-        actor_type="admin",
+        actor_type="admin" if ADMIN in roles else "tenant_admin",
         resource_type="tenant",
         resource_id=str(tenant_id),
         details={"name": t.name},
@@ -147,18 +173,23 @@ def generate_api_key(tenant_id: int, db: Session = Depends(get_db)) -> dict:
     return {"api_key": plain_key, "tenant_id": tenant_id}
 
 
-@router.delete("/tenants/{tenant_id}/api-key", status_code=204, dependencies=[Depends(require_admin)])
-def revoke_api_key(tenant_id: int, db: Session = Depends(get_db)) -> None:
+@router.delete("/tenants/{tenant_id}/api-key", status_code=204)
+def revoke_api_key(
+    tenant_id: int,
+    payload: dict = Depends(_require_api_key_access),
+    db: Session = Depends(get_db),
+) -> None:
     """Révoque l'API key du tenant (met api_key à NULL)."""
     t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     t.api_key = None
     db.flush()
+    roles: list[str] = payload.get("realm_access", {}).get("roles", [])
     log_audit(
         db,
         action_type="REVOKE_API_KEY",
-        actor_type="admin",
+        actor_type="admin" if ADMIN in roles else "tenant_admin",
         resource_type="tenant",
         resource_id=str(tenant_id),
         details={"name": t.name},
