@@ -86,7 +86,25 @@ jobs:
         run: npm run build
 
   # ────────────────────────────────────────────────────────────
-  # Job 3 — Lint frontend (ESLint)
+  # Job 3 — Commitlint (convention des messages de commit)
+  # ────────────────────────────────────────────────────────────
+  commitlint:
+    name: Commitlint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Vérifier les messages de commit
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.json
+
+  # ────────────────────────────────────────────────────────────
+  # Job 4 — Lint frontend (ESLint)
   # ────────────────────────────────────────────────────────────
   lint:
     name: Frontend — lint
