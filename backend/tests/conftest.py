@@ -97,7 +97,7 @@ def client(db_session):
         for role_key, payload in PAYLOADS.items():
             if f"fake-{role_key}-token" in token:
                 return payload
-        raise Exception("Token de test non reconnu")
+        raise ValueError("Token de test non reconnu")
 
     _DECODE_TARGETS = [
         "app.api.tenants.decode_keycloak_token",

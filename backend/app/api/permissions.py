@@ -166,7 +166,8 @@ def get_permissions(
     return PermissionMatrix(tenant_id=tenant_id, pages=pages_out)
 
 
-@router.put("/admin/tenants/{tenant_id}/permissions", status_code=204)
+@router.put("/admin/tenants/{tenant_id}/permissions", status_code=204,
+            responses={403: {"description": "Accès refusé"}, 404: {"description": "Tenant introuvable"}, 400: {"description": "Page ou rôle invalide"}})
 def set_permission(
     tenant_id: int,
     body: SetPermissionRequest,
@@ -219,7 +220,8 @@ def set_permission(
 
 # ── Endpoints features (plafond FraudGuard — admin uniquement) ────────────────
 
-@router.get("/admin/tenants/{tenant_id}/features", response_model=FeatureMatrix)
+@router.get("/admin/tenants/{tenant_id}/features", response_model=FeatureMatrix,
+            responses={403: {"description": "Réservé à l'admin FraudGuard"}, 404: {"description": "Tenant introuvable"}})
 def get_features(
     tenant_id: int,
     token: str = Depends(oauth2_scheme),
@@ -237,7 +239,8 @@ def get_features(
     return FeatureMatrix(tenant_id=tenant_id, features=_get_features(tenant_id, db))
 
 
-@router.put("/admin/tenants/{tenant_id}/features", status_code=204)
+@router.put("/admin/tenants/{tenant_id}/features", status_code=204,
+            responses={403: {"description": "Réservé à l'admin FraudGuard"}, 404: {"description": "Tenant ou feature introuvable"}, 400: {"description": "Feature inconnue"}})
 def set_feature(
     tenant_id: int,
     body: SetFeatureRequest,

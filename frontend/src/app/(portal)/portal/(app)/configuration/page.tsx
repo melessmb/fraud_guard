@@ -100,12 +100,14 @@ export default function PortalConfigurationPage() {
   };
 
   const handleRevokeKey = async () => {
-    if (!tenantId || !confirm("Révoquer l'API key ? Toutes les intégrations utilisant cette clé cesseront de fonctionner.")) return;
-    setKeyRevoking(true); setKeyError(""); setNewKey(null);
+    if (!tenantId) return;
+    const confirmed = confirm("Révoquer l'API key ? Toutes les intégrations utilisant cette clé cesseront de fonctionner.");
+    if (!confirmed) return;
+    setKeyRevoking(true);
+    setKeyError("");
+    setNewKey(null);
     try {
-      const res = await portalFetch(`/api/v1/tenants/${tenantId}/api-key`, {
-        method: "DELETE",
-      });
+      const res = await portalFetch(`/api/v1/tenants/${tenantId}/api-key`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error(`Erreur ${res.status}`);
       setHasKey(false);
     } catch (err: unknown) {

@@ -18,7 +18,7 @@ export function PortalTopbar({ title, subtitle }: PortalTopbarProps) {
     if (theme === "dark") root.classList.add("dark");
     else if (theme === "light") root.classList.remove("dark");
     else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const prefersDark = globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
       prefersDark ? root.classList.add("dark") : root.classList.remove("dark");
     }
   }, [theme]);

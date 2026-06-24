@@ -49,8 +49,8 @@ export default function PortalLoginPage() {
       const roles = ((payload as any).realm_access?.roles ?? []) as UserRole[];
 
       // Ce portail est réservé aux opérateurs clients (tenant, compliance)
-      const allowedRoles: UserRole[] = ["tenant", "compliance", "tenant_admin", "developer"];
-      const hasPortalRole = roles.some((r) => allowedRoles.includes(r));
+      const allowedRoles = new Set<UserRole>(["tenant", "compliance", "tenant_admin", "developer"]);
+      const hasPortalRole = roles.some((r) => allowedRoles.has(r));
       if (!hasPortalRole) {
         setError("Ce portail est réservé aux opérateurs clients. Utilisez l'espace FraudGuard.");
         return;

@@ -19,12 +19,12 @@ export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
 
   add: (toast) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    set((s) => ({ toasts: [...s.toasts, { ...toast, id }] }));
+    const id = crypto.randomUUID();
     const duration = toast.duration ?? (toast.type === "error" ? 6000 : 4000);
-    setTimeout(() => {
-      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
-    }, duration);
+    const removeAfter = (toastId: string) =>
+      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== toastId) }));
+    set((s) => ({ toasts: [...s.toasts, { ...toast, id }] }));
+    setTimeout(removeAfter, duration, id);
   },
 
   remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

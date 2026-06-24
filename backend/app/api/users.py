@@ -74,7 +74,8 @@ class UserOut(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.post("/admin/users/invite", response_model=InviteUserResponse)
+@router.post("/admin/users/invite", response_model=InviteUserResponse,
+             responses={403: {"description": "Rôle non autorisé ou accès cross-tenant"}, 404: {"description": "Tenant introuvable"}})
 def invite_user(
     body: InviteUserRequest,
     payload: dict = Depends(_require_admin_or_tenant_admin),
@@ -230,7 +231,8 @@ def list_all_users(
     return result
 
 
-@router.delete("/admin/users/{keycloak_id}", status_code=204)
+@router.delete("/admin/users/{keycloak_id}", status_code=204,
+               responses={403: {"description": "Utilisateur non trouvé dans votre tenant"}, 500: {"description": "Erreur Keycloak"}})
 def revoke_user(
     keycloak_id: str,
     payload: dict = Depends(_require_admin_or_tenant_admin),

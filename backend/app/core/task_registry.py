@@ -22,10 +22,14 @@ async def drain(timeout: float = 10.0) -> None:
     """Attend la fin de toutes les tâches en cours, puis annule les restantes."""
     if not _pending:
         return
-    log.info("Shutdown : attente de %d tâche(s) en cours (timeout=%ss)…", len(_pending), timeout)
-    done, still_pending = await asyncio.wait(list(_pending), timeout=timeout)
-    if still_pending:
+    tasks = list(_pending)
+    log.info("Shutdown : attente de %d tâche(s) en cours (timeout=%ss)…", len(tasks), timeout)
+    try:
+        async with asyncio.timeout(timeout):
+            await asyncio.gather(*tasks, return_exceptions=True)
+        log.info("Shutdown : drain terminé (%d complétées)", len(tasks))
+    except TimeoutError:
+        still_pending = [t for t in tasks if not t.done()]
         log.warning("Shutdown : %d tâche(s) non terminées — annulation forcée", len(still_pending))
         for t in still_pending:
             t.cancel()
-    log.info("Shutdown : drain terminé (%d complétées, %d annulées)", len(done), len(still_pending))

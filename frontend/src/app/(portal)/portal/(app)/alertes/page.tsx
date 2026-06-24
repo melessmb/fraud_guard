@@ -120,26 +120,28 @@ export default function PortalAlertesPage() {
       </div>
 
       {/* Tableau */}
-      {loading ? (
+      {loading && (
         <div className="mt-6 space-y-3">
-          {Array.from({length: 5}).map((_, i) => (
-            <div key={i} className="h-14 bg-card border border-border rounded-xl animate-pulse" />
+          {["sk-1","sk-2","sk-3","sk-4","sk-5"].map((key) => (
+            <div key={key} className="h-14 bg-card border border-border rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : !data || data.items.length === 0 ? (
+      )}
+      {!loading && (!data || data.items.length === 0) && (
         <div className="mt-16 text-center">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
           <p className="font-semibold text-foreground">Aucune alerte</p>
           <p className="text-sm text-muted-foreground mt-1">Rien à traiter pour ces filtres.</p>
         </div>
-      ) : (
+      )}
+      {!loading && data && data.items.length > 0 && (
         <>
           <div className="mt-4 rounded-xl border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/40">
                 <tr>
-                  {["Transaction","Montant","Canal","Score","Risque","Statut","Date",""].map((h, i) => (
-                    <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  {[{k:"transaction",l:"Transaction"},{k:"montant",l:"Montant"},{k:"canal",l:"Canal"},{k:"score",l:"Score"},{k:"risque",l:"Risque"},{k:"statut",l:"Statut"},{k:"date",l:"Date"},{k:"action",l:""}].map(({k,l}) => (
+                    <th key={k} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l}</th>
                   ))}
                 </tr>
               </thead>
