@@ -58,22 +58,20 @@ export default function PortalEquipePage() {
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
 
-  const tenantId = activeTenantId;
-
   const loadMembers = useCallback(async () => {
-    if (!tenantId) return;
-    const res = await portalFetch(`/api/v1/admin/tenants/${tenantId}/users`);
+    if (!activeTenantId) return;
+    const res = await portalFetch(`/api/v1/admin/tenants/${activeTenantId}/users`);
     if (res.ok) setMembers(await res.json());
-  }, [tenantId]);
+  }, [activeTenantId]);
 
   const loadPermissions = useCallback(async () => {
-    if (!tenantId) return;
-    const res = await portalFetch(`/api/v1/admin/tenants/${tenantId}/permissions`);
+    if (!activeTenantId) return;
+    const res = await portalFetch(`/api/v1/admin/tenants/${activeTenantId}/permissions`);
     if (res.ok) {
       const data = await res.json();
       setPages(data.pages);
     }
-  }, [tenantId]);
+  }, [activeTenantId]);
 
   useEffect(() => {
     setLoading(true);
@@ -98,6 +96,9 @@ export default function PortalEquipePage() {
       setMembers(prev => prev.filter(m => m.keycloak_id !== keycloakId));
     }
   };
+
+  if (activeTenantId === null) return null;
+  const tenantId: number = activeTenantId;
 
   return (
     <div className="flex-1 overflow-y-auto p-6">

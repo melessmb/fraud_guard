@@ -55,7 +55,7 @@ export default function PortalTransactionsPage() {
       if (res.ok) setData(await res.json());
     } catch { toast.error("Impossible de charger les transactions."); }
     finally { setLoading(false); }
-  }, [user]);
+  }, [activeTenantId]);
 
   useEffect(() => { load(page, isFraud, riskLevel); }, [page, isFraud, riskLevel, load]);
 

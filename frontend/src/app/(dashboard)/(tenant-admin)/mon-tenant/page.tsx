@@ -645,12 +645,26 @@ export default function MonTenantPage() {
 
   const { data: tenant } = useQuery<TenantResponse>({
     queryKey: ["my-tenant", activeTenantId],
+    enabled: activeTenantId !== null,
     queryFn: async () => {
       const res = await apiFetch(`/api/v1/tenants/${activeTenantId}`);
       if (!res.ok) return null;
       return res.json();
     },
   });
+
+  if (activeTenantId === null) {
+    return (
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Topbar title="Mon entreprise" subtitle="Chargement…" />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">Résolution du tenant en cours…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const tenantId: number = activeTenantId;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -679,11 +693,11 @@ export default function MonTenantPage() {
           </Card>
         )}
 
-        <ApiKeySection tenantId={activeTenantId} />
-        <UsersSection tenantId={activeTenantId} />
-        <PermissionsSection tenantId={activeTenantId} />
-        <PolicySection tenantId={activeTenantId} />
-        <HooksSection tenantId={activeTenantId} />
+        <ApiKeySection tenantId={tenantId} />
+        <UsersSection tenantId={tenantId} />
+        <PermissionsSection tenantId={tenantId} />
+        <PolicySection tenantId={tenantId} />
+        <HooksSection tenantId={tenantId} />
 
       </div>
     </div>

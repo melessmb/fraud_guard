@@ -29,7 +29,7 @@ export default function PortalAnalytiquePage() {
     ]).then(([d24, d168]) => { setM24(d24); setM168(d168); })
       .catch(() => toast.error("Impossible de charger les métriques."))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [activeTenantId]);
 
   const row = (label: string, v24?: number | string, v168?: number | string) => (
     <tr key={label} className="border-b border-border hover:bg-muted/20">
