@@ -15,13 +15,9 @@ def _parse_limit(limit_str: str) -> tuple[int, int]:
 
 
 def enforce(key: str, limit_str: str) -> None:
-    """Applique la limite et lève HTTP 429 si dépassée.
-
-    Ajoute les headers X-RateLimit-* sur la réponse via l'exception de FastAPI.
-    Le caller est responsable de passer une clé unique (ex: f"login:{ip}").
-    """
+    """Applique la limite et lève HTTP 429 si dépassée."""
     max_req, window = _parse_limit(limit_str)
-    allowed, remaining = check_rate_limit(key, window_seconds=window, max_requests=max_req)
+    allowed, _ = check_rate_limit(key, window_seconds=window, max_requests=max_req)
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -33,7 +29,6 @@ def enforce(key: str, limit_str: str) -> None:
                 "Retry-After": str(window),
             },
         )
-    return remaining
 
 
 def client_ip(request: Request) -> str:
@@ -44,7 +39,7 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def enforce_score(request: Request, tenant_id: int) -> None:
+def enforce_score(tenant_id: int) -> None:
     """100 req/min par tenant pour le scoring."""
     enforce(f"score:tenant:{tenant_id}", settings.rate_limit_score)
 
@@ -54,6 +49,6 @@ def enforce_login(request: Request) -> None:
     enforce(f"login:{client_ip(request)}", settings.rate_limit_login)
 
 
-def enforce_batch(request: Request, tenant_id: int) -> None:
+def enforce_batch(tenant_id: int) -> None:
     """20 req/min par tenant pour le batch scoring."""
     enforce(f"batch:tenant:{tenant_id}", settings.rate_limit_batch)

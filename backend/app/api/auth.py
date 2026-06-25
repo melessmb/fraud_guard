@@ -16,7 +16,7 @@ _KC_TOKEN_URL = (
 )
 
 
-@router.post("/auth/login", response_model=LoginResponse, tags=["auth"],
+@router.post("/auth/login", tags=["auth"],
              responses={429: {"description": "Trop de tentatives — réessayez dans 60s"}})
 def login(request: Request, payload: LoginRequest) -> LoginResponse:
     """Proxy d'authentification vers Keycloak.

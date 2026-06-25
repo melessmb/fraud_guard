@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.admin_auth import require_admin
@@ -574,16 +574,15 @@ def get_admin_overview(
 
 # ── Batch score ───────────────────────────────────────────────────────────────
 
-@router.post("/tenants/{tenant_id}/events", response_model=List[FraudScoreResponse],
+@router.post("/tenants/{tenant_id}/events",
              responses={429: {"description": "Limite de requêtes dépassée"}})
 async def batch_score(
-    request: Request,
     tenant_id: int,
     batch: BatchEventRequest,
     tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> List[FraudScoreResponse]:
-    enforce_batch(request, tenant.id)
+    enforce_batch(tenant.id)
     from app.services.evaluation import score_transaction
     if tenant.id != tenant_id:
         raise HTTPException(status_code=403, detail="Accès interdit à ce tenant")

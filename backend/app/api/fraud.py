@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core import task_registry
@@ -25,15 +25,13 @@ def _risk_level(score: float) -> str:
     return "low"
 
 
-@router.post("/score", response_model=FraudScoreResponse,
-             responses={429: {"description": "Limite de requêtes dépassée"}})
+@router.post("/score", responses={429: {"description": "Limite de requêtes dépassée"}})
 async def score_transaction_endpoint(
-    request: Request,
     event: FraudEvent,
     tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> FraudScoreResponse:
-    enforce_score(request, tenant.id)
+    enforce_score(tenant.id)
 
     if event.tenant_id != tenant.id:
         raise HTTPException(
