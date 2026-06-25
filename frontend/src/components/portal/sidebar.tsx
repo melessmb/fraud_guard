@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/stores/app.store";
 import {
   LayoutDashboard, AlertTriangle, BarChart2, Zap,
   FileText, Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight,
-  ArrowLeftRight, Users,
+  ArrowLeftRight, Users, SlidersHorizontal,
 } from "lucide-react";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -25,8 +25,9 @@ const NAV_ITEMS = [
   { label: "Analytique",       href: "/portal/analytique",     icon: BarChart2,       roles: null },
   { label: "Scoring",          href: "/portal/scoring",        icon: Zap,             roles: null },
   { label: "Conformité BCEAO", href: "/portal/conformite",     icon: FileText,        roles: null },
-  { label: "Configuration",    href: "/portal/configuration",  icon: Settings,        roles: null },
-  { label: "Équipe",           href: "/portal/equipe",         icon: Users,           roles: ["tenant_admin"] },
+  { label: "Configuration",    href: "/portal/configuration",  icon: Settings,           roles: null },
+  { label: "Règles",           href: "/portal/regles",         icon: SlidersHorizontal, roles: ["tenant_admin", "developer"] },
+  { label: "Équipe",           href: "/portal/equipe",         icon: Users,              roles: ["tenant_admin"] },
 ];
 
 export function PortalSidebar() {

@@ -18,6 +18,7 @@ from app.api import export as export_api
 from app.api import fraud as fraud_api
 from app.api import hooks as hooks_api
 from app.api import model as model_api
+from app.api import rules as rules_api
 from app.api import tenants as tenants_api
 from app.core import task_registry
 from app.core.cache import get_redis
@@ -143,6 +144,7 @@ def readiness(db: Session = Depends(get_db)) -> JSONResponse:
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(fraud_api.router,       prefix="/api/v1", tags=["scoring"])
+app.include_router(rules_api.router,       prefix="/api/v1", tags=["rules"])
 app.include_router(tenants_api.router,     prefix="/api/v1", tags=["tenants"])
 app.include_router(hooks_api.router,       prefix="/api/v1", tags=["hooks"])
 app.include_router(auth_api.router,        prefix="/api/v1", tags=["auth"])

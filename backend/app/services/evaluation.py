@@ -92,12 +92,42 @@ async def score_transaction(
         partial(evaluate_risk, event, extra_context=context),
     )
 
-    score       = ml_result["score"]
-    is_fraud    = ml_result["is_fraud"]
-    model_ver   = ml_result.get("model_version", "v1")
+    score        = ml_result["score"]
+    is_fraud     = ml_result["is_fraud"]
+    model_ver    = ml_result.get("model_version", "v1")
     explanations = ml_result.get("explanations") or {}
     if context:
         explanations["hook_context"] = context
+
+    rule_triggered: Optional[str] = None
+    rule_action:    Optional[str] = None
+
+    # ── 2.5 Règles personnalisées du tenant ───────────────────────────────────
+    if tenant_id and db:
+        from app.models.tenant_custom_rule import TenantCustomRule
+
+        rules = (
+            db.query(TenantCustomRule)
+            .filter(
+                TenantCustomRule.tenant_id == tenant_id,
+                TenantCustomRule.is_active.is_(True),
+            )
+            .order_by(TenantCustomRule.priority)
+            .all()
+        )
+
+        for rule in rules:
+            if not _rule_matches(rule, event, score):
+                continue
+
+            rule_triggered = rule.name
+            rule_action    = rule.action
+            explanations["custom_rule"] = {"name": rule.name, "action": rule.action}
+
+            if rule.action == "block":
+                score    = 1.0
+                is_fraud = True
+            break  # première règle correspondante — arrêt
 
     # ── 3. Post-score hooks ───────────────────────────────────────────────────
     if tenant_id and db:
@@ -154,4 +184,23 @@ async def score_transaction(
         is_fraud=is_fraud,
         model_version=model_ver,
         explanations=explanations,
+        rule_triggered=rule_triggered,
+        rule_action=rule_action,
     )
+
+
+def _rule_matches(rule, event: FraudEvent, score: float) -> bool:
+    """Vérifie si toutes les conditions d'une règle sont satisfaites (AND)."""
+    if rule.min_amount is not None and event.amount < rule.min_amount:
+        return False
+    if rule.max_amount is not None and event.amount > rule.max_amount:
+        return False
+    if rule.channels and event.channel not in rule.channels:
+        return False
+    if rule.countries and event.country not in rule.countries:
+        return False
+    if rule.min_score is not None and score < rule.min_score:
+        return False
+    if rule.max_score is not None and score > rule.max_score:
+        return False
+    return True
