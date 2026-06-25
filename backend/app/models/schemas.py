@@ -101,6 +101,8 @@ class FraudScoreResponse(BaseModel):
     is_fraud: bool
     model_version: str
     explanations: Optional[Dict[str, Any]] = None
+    rule_triggered: Optional[str] = None   # nom de la règle personnalisée déclenchée
+    rule_action: Optional[str] = None      # "block" | "review" | "flag"
 
 
 class LoginRequest(BaseModel):
@@ -138,6 +140,48 @@ class WebhookConfig(BaseModel):
 
 class BatchEventRequest(BaseModel):
     events: List[FraudEvent]
+
+
+# ── Règles personnalisées ─────────────────────────────────────────────────────
+
+class CustomRuleBase(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: Optional[str] = None
+    min_amount: Optional[float] = Field(default=None, ge=0)
+    max_amount: Optional[float] = Field(default=None, ge=0)
+    channels: Optional[List[str]] = None
+    countries: Optional[List[str]] = None
+    min_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    max_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    action: str = Field(default="flag", pattern="^(block|review|flag)$")
+    priority: int = Field(default=100, ge=1, le=1000)
+    is_active: bool = True
+
+
+class CustomRuleCreate(CustomRuleBase):
+    pass
+
+
+class CustomRuleUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    description: Optional[str] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    channels: Optional[List[str]] = None
+    countries: Optional[List[str]] = None
+    min_score: Optional[float] = None
+    max_score: Optional[float] = None
+    action: Optional[str] = Field(default=None, pattern="^(block|review|flag)$")
+    priority: Optional[int] = Field(default=None, ge=1, le=1000)
+    is_active: Optional[bool] = None
+
+
+class CustomRuleResponse(CustomRuleBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    tenant_id: int
+    created_at: Any
+    updated_at: Any
 
 
 class PolicyConfig(BaseModel):

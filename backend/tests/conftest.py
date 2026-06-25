@@ -18,6 +18,7 @@ from app.main import app
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.fraud_log import FraudLog  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
+from app.models.tenant_custom_rule import TenantCustomRule  # noqa: F401
 from app.models.tenant_feature import TenantFeature  # noqa: F401
 from app.models.tenant_permission import TenantPagePermission  # noqa: F401
 from app.models.tenant_policy import TenantPolicy  # noqa: F401

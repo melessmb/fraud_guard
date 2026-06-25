@@ -19,6 +19,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/portal/scoring":      { title: "Scoring",            subtitle: "Testez le moteur de scoring en temps réel" },
   "/portal/conformite":   { title: "Conformité BCEAO",   subtitle: "Rapports et indicateurs réglementaires" },
   "/portal/configuration":{ title: "Configuration",      subtitle: "Seuils, webhook et clé API" },
+  "/portal/regles":       { title: "Règles personnalisées", subtitle: "Définissez vos propres règles de détection de fraude" },
   "/portal/equipe":       { title: "Équipe",             subtitle: "Membres et permissions de votre organisation" },
 };
 
