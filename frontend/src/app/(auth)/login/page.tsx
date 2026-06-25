@@ -45,20 +45,28 @@ export default function LoginPage() {
       }
 
       const payload = decodeJwt(data.access_token);
+
+      // Filter to known dashboard roles only — drops Keycloak system roles
+      // (offline_access, uma_authorization, default-roles-*, etc.)
+      const DASHBOARD_ROLES = new Set<UserRole>(["admin", "tenant_admin", "compliance", "tenant"]);
+      const rawRoles = ((payload as any).realm_access?.roles ?? []) as string[];
+      const roles = rawRoles.filter((r): r is UserRole => DASHBOARD_ROLES.has(r as UserRole));
+
+      // This space is for FraudGuard staff only — block portal-only roles
+      const hasDashboardRole = roles.some((r) => ["admin", "tenant_admin", "compliance"].includes(r));
+      if (!hasDashboardRole) {
+        setError("Cet espace est réservé à l'équipe FraudGuard. Utilisez l'espace client →");
+        return;
+      }
+
       const userInfo: UserInfo = {
         sub:      payload.sub as string,
         username: (payload.preferred_username as string) || username,
         email:    (payload.email as string) || "",
-        roles:    ((payload as any).realm_access?.roles ?? []) as UserRole[],
+        roles,
         tenantId: (payload as any).tenant_id as number | undefined,
       };
       setUser(userInfo, data.access_token);
-      // Rôle "tenant" seul → renvoyer vers l'espace client
-      const isTenantOnly = userInfo.roles.includes("tenant") && !userInfo.roles.includes("admin") && !userInfo.roles.includes("tenant_admin") && !userInfo.roles.includes("compliance");
-      if (isTenantOnly) {
-        setError("Cet espace est réservé à l'équipe FraudGuard. Utilisez l'espace client →");
-        return;
-      }
       router.push("/");
     } catch {
       setError("Erreur de connexion. Vérifiez que l'API est accessible.");

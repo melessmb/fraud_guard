@@ -46,12 +46,15 @@ export default function PortalLoginPage() {
       }
 
       const payload = decodeJwt(data.access_token);
-      const roles = ((payload as any).realm_access?.roles ?? []) as UserRole[];
 
-      // Ce portail est réservé aux opérateurs clients (tenant, compliance)
-      const allowedRoles = new Set<UserRole>(["tenant", "compliance", "tenant_admin", "developer"]);
-      const hasPortalRole = roles.some((r) => allowedRoles.has(r));
-      if (!hasPortalRole) {
+      // Filter to known portal roles only — drops Keycloak system roles
+      // (offline_access, uma_authorization, default-roles-*, etc.)
+      const PORTAL_ROLES = new Set<UserRole>(["tenant", "compliance", "tenant_admin", "developer"]);
+      const rawRoles = ((payload as any).realm_access?.roles ?? []) as string[];
+      const roles = rawRoles.filter((r): r is UserRole => PORTAL_ROLES.has(r as UserRole));
+
+      // Ce portail est réservé aux opérateurs clients
+      if (roles.length === 0) {
         setError("Ce portail est réservé aux opérateurs clients. Utilisez l'espace FraudGuard.");
         return;
       }
