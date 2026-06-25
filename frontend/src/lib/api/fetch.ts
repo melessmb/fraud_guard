@@ -14,6 +14,8 @@ export function apiFetch(input: string, init: RequestInit = {}): Promise<Respons
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
+  // Identifies the origin space so the middleware can pick the right cookie fallback
+  headers.set("X-Fg-Space", "dashboard");
 
   return fetch(input, { ...init, headers, credentials: "include" });
 }

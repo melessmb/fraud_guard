@@ -26,13 +26,19 @@ export const usePortalAuthStore = create<PortalAuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
-      refreshToken: null,
+      // Synchronous init — tokens available immediately on page reload, no race condition
+      token: typeof window !== "undefined"
+        ? sessionStorage.getItem("fg_portal_session")
+        : null,
+      refreshToken: typeof window !== "undefined"
+        ? sessionStorage.getItem("fg_portal_refresh")
+        : null,
       isAuthenticated: false,
 
       setUser: (user, token, refreshToken) => {
         if (typeof window !== "undefined") {
           sessionStorage.setItem("fg_portal_session", token);
+          if (refreshToken) sessionStorage.setItem("fg_portal_refresh", refreshToken);
         }
         set({ user, token, refreshToken: refreshToken ?? null, isAuthenticated: true });
       },
@@ -40,6 +46,7 @@ export const usePortalAuthStore = create<PortalAuthState>()(
       clearUser: () => {
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("fg_portal_session");
+          sessionStorage.removeItem("fg_portal_refresh");
         }
         set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
       },
@@ -63,15 +70,6 @@ export const usePortalAuthStore = create<PortalAuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (typeof window === "undefined") return;
-        const stored = sessionStorage.getItem("fg_portal_session");
-        if (stored) {
-          setTimeout(() => {
-            usePortalAuthStore.setState({ token: stored });
-          }, 0);
-        }
-      },
     }
   )
 );

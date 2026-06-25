@@ -14,6 +14,8 @@ export function portalFetch(input: string, init: RequestInit = {}): Promise<Resp
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
+  // Identifies the origin space so the middleware can pick the right cookie fallback
+  headers.set("X-Fg-Space", "portal");
 
   return fetch(input, { ...init, headers, credentials: "include" });
 }

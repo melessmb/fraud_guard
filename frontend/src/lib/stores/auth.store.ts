@@ -25,7 +25,10 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
+      // Synchronous init — token available immediately on page reload, no race condition
+      token: typeof window !== "undefined"
+        ? sessionStorage.getItem("fg_token_session")
+        : null,
       isAuthenticated: false,
 
       setUser: (user, token) => {
@@ -61,18 +64,6 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
-        // state.token = x ne suffit pas — il faut appeler setState pour
-        // que useAuthStore.getState().token retourne la bonne valeur
-        if (typeof window === "undefined") return;
-        const stored = sessionStorage.getItem("fg_token_session");
-        if (stored) {
-          // Appel différé pour éviter une mutation pendant la rehydration
-          setTimeout(() => {
-            useAuthStore.setState({ token: stored });
-          }, 0);
-        }
-      },
     }
   )
 );

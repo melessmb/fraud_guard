@@ -5,13 +5,16 @@ export function middleware(request: NextRequest) {
   const dashboardToken = request.cookies.get("fg_token")?.value;
   const portalToken    = request.cookies.get("fg_portal_token")?.value;
 
-  // Inject Authorization header from the appropriate httpOnly cookie for /api/v1/* requests
+  // Inject Authorization header from the appropriate httpOnly cookie for /api/v1/* requests.
+  // apiFetch sets X-Fg-Space: dashboard, portalFetch sets X-Fg-Space: portal.
+  // This fallback only triggers when the Zustand store token is unavailable (e.g. SSR).
   if (pathname.startsWith("/api/v1/")) {
-    // Prefer the token that is already set in the Authorization header (from portalFetch/apiFetch).
-    // Only inject from cookie if no header is present yet.
     const existingAuth = request.headers.get("Authorization");
     if (!existingAuth) {
-      const token = portalToken ?? dashboardToken;
+      const space = request.headers.get("X-Fg-Space");
+      const token = space === "portal" ? portalToken
+                  : space === "dashboard" ? dashboardToken
+                  : (portalToken ?? dashboardToken);
       if (token) {
         const headers = new Headers(request.headers);
         headers.set("Authorization", `Bearer ${token}`);

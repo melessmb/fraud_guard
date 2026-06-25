@@ -105,22 +105,6 @@ services:
         reservations:
           memory: 128M
 
-  dashboard:
-    build:
-      context: ../..
-      dockerfile: infrastructure/docker/Dockerfile.dashboard
-    restart: unless-stopped
-    ports:
-      - "8501:8501"
-    environment:
-      - API_URL=http://api:8000
-      - KEYCLOAK_URL=http://localhost:8080
-      - KEYCLOAK_REALM=fraudguard
-      - KEYCLOAK_CLIENT_ID=fraudguard-dashboard
-    depends_on:
-      api:
-        condition: service_healthy
-
   frontend:
     build:
       context: ../../frontend
