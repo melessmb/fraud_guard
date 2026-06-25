@@ -22,17 +22,16 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
         start = time.perf_counter()
+        response: Response | None = None
         try:
             response = await call_next(request)
-        except Exception:
-            raise
         finally:
             elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
             log.info(
                 "http_request",
                 method=request.method,
                 path=request.url.path,
-                status=getattr(response, "status_code", 500),
+                status=response.status_code if response is not None else 500,
                 duration_ms=elapsed_ms,
             )
             structlog.contextvars.clear_contextvars()

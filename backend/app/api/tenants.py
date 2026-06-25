@@ -643,8 +643,8 @@ async def batch_score(
 
 
 @router.get("/metrics", response_model=MetricsResponse, include_in_schema=False)
-def metrics_legacy(tenant_id: int, db: Session = Depends(get_db)) -> MetricsResponse:
-    return get_tenant_metrics(tenant_id=tenant_id, db=db)
+def metrics_legacy(tenant_id: int, hours: int = Query(default=24, ge=1, le=168), db: Session = Depends(get_db)) -> MetricsResponse:
+    return get_tenant_metrics(tenant_id=tenant_id, hours=hours, db=db)
 
 
 def _risk_level(score: float) -> str:
