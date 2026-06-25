@@ -185,8 +185,9 @@ class CustomRuleResponse(CustomRuleBase):
 
 
 class PolicyConfig(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())
+    model_config = ConfigDict(protected_namespaces=(), populate_by_name=True)
 
+    # Champs canoniques (DB)
     score_threshold: float = Field(ge=0.0, le=1.0, default=0.7)
     auto_reject_threshold: float = Field(ge=0.0, le=1.0, default=0.9)
     max_amount_xof: Optional[float] = None
@@ -194,6 +195,18 @@ class PolicyConfig(BaseModel):
     allowed_channels: List[str] = []
     blocked_channels: List[str] = []
     model_id: str = "fraud_v1"
+    medium_risk_threshold: float = Field(ge=0.0, le=1.0, default=0.5)
+
+    # Alias frontend — reçus depuis la page Configuration du portal
+    high_risk_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    auto_block_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    webhook_url: Optional[str] = None  # géré séparément via /webhooks
+
+    def resolved_score_threshold(self) -> float:
+        return self.high_risk_threshold if self.high_risk_threshold is not None else self.score_threshold
+
+    def resolved_auto_reject_threshold(self) -> float:
+        return self.auto_block_threshold if self.auto_block_threshold is not None else self.auto_reject_threshold
 
 
 class AlertResponse(BaseModel):

@@ -208,39 +208,78 @@ def get_api_key_status(tenant_id: int, db: Session = Depends(get_db)) -> dict:
 
 # ── Policies ──────────────────────────────────────────────────────────────────
 
-@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
-def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
-    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
-        raise HTTPException(status_code=404, detail="Tenant introuvable")
-    row = db.query(TenantPolicy).filter(TenantPolicy.tenant_id == tenant_id).first()
-    if not row:
-        return PolicyConfig()
+def _policy_to_config(row: TenantPolicy) -> PolicyConfig:
     return PolicyConfig(
         score_threshold=row.score_threshold,
         auto_reject_threshold=row.auto_reject_threshold,
+        medium_risk_threshold=getattr(row, "medium_risk_threshold", 0.5),
         max_amount_xof=row.max_amount_xof,
         max_amount_usd=row.max_amount_usd,
         allowed_channels=row.allowed_channels or [],
         blocked_channels=row.blocked_channels or [],
         model_id=row.model_id,
+        # Exposer aussi les alias frontend pour que la page de config pré-remplisse bien
+        high_risk_threshold=row.score_threshold,
+        auto_block_threshold=row.auto_reject_threshold,
     )
 
 
-@router.post("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
-def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)) -> PolicyConfig:
+def _apply_policy(row: TenantPolicy, policy: PolicyConfig) -> None:
+    """Applique les champs d'une PolicyConfig sur une ligne TenantPolicy."""
+    row.score_threshold       = policy.resolved_score_threshold()
+    row.auto_reject_threshold = policy.resolved_auto_reject_threshold()
+    row.medium_risk_threshold = policy.medium_risk_threshold
+    row.max_amount_xof        = policy.max_amount_xof
+    row.max_amount_usd        = policy.max_amount_usd
+    row.allowed_channels      = policy.allowed_channels
+    row.blocked_channels      = policy.blocked_channels
+    row.model_id              = policy.model_id
+
+
+@router.get("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
+def get_policy(tenant_id: int, db: Session = Depends(get_db)) -> PolicyConfig:
+    if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
+        raise HTTPException(status_code=404, detail="Tenant introuvable")
+    row = db.query(TenantPolicy).filter(TenantPolicy.tenant_id == tenant_id).first()
+    return _policy_to_config(row) if row else PolicyConfig()
+
+
+def _save_policy(tenant_id: int, policy: PolicyConfig, db: Session) -> PolicyConfig:
     if not db.query(Tenant).filter(Tenant.id == tenant_id).first():
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     row = db.query(TenantPolicy).filter(TenantPolicy.tenant_id == tenant_id).first()
     if row:
-        for f, v in policy.model_dump().items():
-            setattr(row, f, v)
+        _apply_policy(row, policy)
     else:
-        db.add(TenantPolicy(tenant_id=tenant_id, **policy.model_dump()))
+        row = TenantPolicy(tenant_id=tenant_id)
+        _apply_policy(row, policy)
+        db.add(row)
     db.flush()
+
+    # Webhook_url : mise à jour du webhook si fourni
+    if policy.webhook_url is not None:
+        from app.models.tenant_webhook import TenantWebhook
+        wh = db.query(TenantWebhook).filter(TenantWebhook.tenant_id == tenant_id).first()
+        if wh:
+            wh.url = policy.webhook_url
+        elif policy.webhook_url:
+            db.add(TenantWebhook(tenant_id=tenant_id, url=policy.webhook_url, events=["fraud_detected"]))
+        db.flush()
+
     log_audit(db, action_type="UPDATE_POLICY", actor_type="admin",
               resource_type="policy", resource_id=str(tenant_id),
-              details={"score_threshold": policy.score_threshold, "model_id": policy.model_id})
-    return policy
+              details={"score_threshold": row.score_threshold, "model_id": row.model_id})
+    return _policy_to_config(row)
+
+
+@router.post("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
+def create_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)) -> PolicyConfig:
+    return _save_policy(tenant_id, policy, db)
+
+
+@router.put("/tenants/{tenant_id}/policies", response_model=PolicyConfig, dependencies=[Depends(require_tenant_access)])
+def update_policy(tenant_id: int, policy: PolicyConfig, db: Session = Depends(get_db)) -> PolicyConfig:
+    return _save_policy(tenant_id, policy, db)
 
 
 # ── Metrics & Alerts ──────────────────────────────────────────────────────────
@@ -251,15 +290,16 @@ def get_tenant_metrics(tenant_id: int, hours: int = Query(default=24, ge=1, le=1
         raise HTTPException(status_code=404, detail="Tenant introuvable")
     since = datetime.utcnow() - timedelta(hours=hours)
     logs  = db.query(FraudLog).filter(FraudLog.tenant_id == tenant_id, FraudLog.created_at >= since).all()
-    total       = len(logs)
-    fraud_count = sum(1 for l in logs if l.is_fraud)
+    total            = len(logs)
+    fraud_count      = sum(1 for l in logs if l.is_fraud)
+    false_positives  = sum(1 for l in logs if l.is_fraud and l.status == "rejected")
     return MetricsResponse(
         period_start=since,
         period_end=datetime.utcnow(),
         transaction_count=total,
         fraud_count=fraud_count,
         detection_rate=fraud_count / total if total > 0 else 0.0,
-        false_positive_rate=0.0,
+        false_positive_rate=false_positives / fraud_count if fraud_count > 0 else 0.0,
         model_version="v1-lgbm",
         tenant_id=tenant_id,
     )

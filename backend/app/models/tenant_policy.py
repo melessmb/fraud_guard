@@ -12,6 +12,7 @@ class TenantPolicy(Base):
     tenant_id = Column(Integer, nullable=False, unique=True, index=True)
     score_threshold = Column(Float, default=0.7, nullable=False)
     auto_reject_threshold = Column(Float, default=0.9, nullable=False)
+    medium_risk_threshold = Column(Float, default=0.5, nullable=False)
     max_amount_xof = Column(Float, nullable=True)
     max_amount_usd = Column(Float, nullable=True)
     allowed_channels = Column(JSON, default=list, nullable=False)
