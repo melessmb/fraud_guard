@@ -75,7 +75,8 @@ def generate_synthetic_data(n_samples: int = 20_000, seed: int = 42) -> pd.DataF
     return df
 
 
-def train_model(n_samples: int = 20_000) -> None:
+def train_model(n_samples: int = 20_000) -> dict:
+    """Entraîne le modèle et retourne les métriques + version."""
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Génération de {n_samples} transactions synthétiques...")
@@ -112,11 +113,14 @@ def train_model(n_samples: int = 20_000) -> None:
     auc = roc_auc_score(y_test, y_pred)
     print(f"AUC-ROC (test) : {auc:.4f}")
 
+    from datetime import datetime as _dt
+    version = f"v{_dt.utcnow().strftime('%Y%m%d%H%M%S')}"
+
     bundle = {
         "model": model,
         "features": FEATURES,
         "auc_roc": float(auc),
-        "version": "v1",
+        "version": version,
         "n_train": len(X_train),
     }
 
@@ -125,6 +129,7 @@ def train_model(n_samples: int = 20_000) -> None:
         pickle.dump(bundle, f)
 
     print(f"Modele sauvegarde : {model_path}")
+    return {"version": version, "auc_roc": float(auc), "n_train": len(X_train)}
 
 
 if __name__ == "__main__":
