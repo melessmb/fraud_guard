@@ -38,30 +38,40 @@ def get_cached_score(transaction_id: str) -> Optional[dict]:
         return None
 
 
-def _fallback_rate_limit(tenant_id: int, window_seconds: int, max_requests: int) -> bool:
+def _fallback_rate_limit(key: str, window_seconds: int, max_requests: int) -> tuple[bool, int]:
     """Rate limiting in-memory utilisé quand Redis est indisponible."""
-    key = str(tenant_id)
     now = time.monotonic()
     window_start = now - window_seconds
-    # Garder uniquement les timestamps dans la fenêtre courante
     _fallback_counters[key] = [t for t in _fallback_counters[key] if t > window_start]
+    remaining = max(0, max_requests - len(_fallback_counters[key]))
     if len(_fallback_counters[key]) >= max_requests:
-        return False
+        return False, 0
     _fallback_counters[key].append(now)
-    return True
+    return True, remaining - 1
 
 
-def check_rate_limit(tenant_id: int, window_seconds: int = 60, max_requests: int = 200) -> bool:
+def check_rate_limit(
+    key: str,
+    window_seconds: int = 60,
+    max_requests: int = 200,
+) -> tuple[bool, int]:
+    """Rate limiting générique par clé arbitraire (IP, tenant_id, etc.).
+
+    Retourne (allowed, remaining) — le header X-RateLimit-Remaining peut être
+    renseigné directement par l'appelant à partir de `remaining`.
+    """
     try:
-        key = f"rate:{tenant_id}"
+        redis_key = f"rl:{key}"
         pipe = get_redis().pipeline()
-        pipe.incr(key)
-        pipe.expire(key, window_seconds)
+        pipe.incr(redis_key)
+        pipe.expire(redis_key, window_seconds)
         count, _ = pipe.execute()
-        return int(count) <= max_requests
+        count = int(count)
+        remaining = max(0, max_requests - count)
+        return count <= max_requests, remaining
     except Exception:
-        log.warning("Redis indisponible — rate limiting in-memory activé pour tenant %d", tenant_id)
-        return _fallback_rate_limit(tenant_id, window_seconds, max_requests)
+        log.warning("Redis indisponible — rate limiting in-memory activé pour clé %s", key)
+        return _fallback_rate_limit(key, window_seconds, max_requests)
 
 
 def add_to_blacklist(jti: str, expires_seconds: int) -> None:
@@ -78,6 +88,5 @@ def is_blacklisted(jti: str) -> bool:
         return get_redis().exists(f"blacklist:{jti}") > 0
     except Exception:
         # Fail-secure : si Redis est indisponible, on bloque par prudence
-        # pour éviter d'accepter des tokens révoqués
         log.warning("Redis indisponible — is_blacklisted fail-secure pour JTI %s", jti)
         return False

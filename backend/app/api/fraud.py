@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.core import task_registry
 from app.core.auth import get_current_tenant
-from app.core.cache import check_rate_limit
 from app.core.database import get_db
 from app.core.pubsub import publish_fraud_alert
+from app.core.rate_limit import enforce_score
 from app.models.fraud_log import FraudLog
 from app.models.schemas import FraudEvent, FraudScoreResponse
 from app.models.tenant import Tenant
@@ -25,17 +25,14 @@ def _risk_level(score: float) -> str:
     return "low"
 
 
-@router.post("/score", response_model=FraudScoreResponse)
+@router.post("/score", responses={429: {"description": "Limite de requêtes dépassée"}})
 async def score_transaction_endpoint(
     event: FraudEvent,
     tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
 ) -> FraudScoreResponse:
-    # Rate limiting : 200 req/min par tenant
-    if not check_rate_limit(tenant.id):
-        raise HTTPException(status_code=429, detail="Limite de requêtes dépassée — réessayez dans 60s")
+    enforce_score(tenant.id)
 
-    # Isolation tenant : le tenant_id du payload doit correspondre à l'API key utilisée
     if event.tenant_id != tenant.id:
         raise HTTPException(
             status_code=403,
@@ -79,10 +76,8 @@ async def score_transaction_endpoint(
             "timestamp":      event.timestamp.isoformat(),
         }
 
-        # Notification SSE (dashboard temps réel)
         await publish_fraud_alert(tenant.id, alert_payload)
 
-        # Webhook tenant — fire-and-forget, n'impacte pas le temps de réponse
         webhook: TenantWebhook | None = (
             db.query(TenantWebhook)
             .filter(TenantWebhook.tenant_id == tenant.id)

@@ -1,10 +1,11 @@
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.keycloak_auth import decode_keycloak_token, oauth2_scheme
+from app.core.rate_limit import enforce_login
 from app.models.schemas import LoginRequest, LoginResponse, TenantResponse
 from app.models.tenant import Tenant
 
@@ -15,13 +16,15 @@ _KC_TOKEN_URL = (
 )
 
 
-@router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
-def login(payload: LoginRequest) -> LoginResponse:
+@router.post("/auth/login", tags=["auth"],
+             responses={429: {"description": "Trop de tentatives — réessayez dans 60s"}})
+def login(request: Request, payload: LoginRequest) -> LoginResponse:
     """Proxy d'authentification vers Keycloak.
 
     Le dashboard appelle cet endpoint (backend → Keycloak via réseau Docker).
     Évite d'exposer l'URL interne de Keycloak au navigateur.
     """
+    enforce_login(request)
     url = _KC_TOKEN_URL.format(
         base=settings.keycloak_url,
         realm=settings.keycloak_realm,

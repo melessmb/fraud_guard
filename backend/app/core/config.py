@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    rate_limit_score: str = "100/minute"       # endpoint /score (par IP)
+    rate_limit_login: str = "10/minute"        # endpoint /auth/login (anti brute-force)
+    rate_limit_batch: str = "20/minute"        # endpoint /tenants/{id}/events (batch)
+    rate_limit_default: str = "300/minute"     # tous les autres endpoints
+
     # Monitoring (optional)
     prometheus_enabled: bool = True
 
