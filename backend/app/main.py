@@ -56,11 +56,9 @@ async def lifespan(app: FastAPI):
     _validate_secret_key()
     init_db()
     yield
-    # Shutdown gracieux : attendre les webhooks fire-and-forget en cours
     await task_registry.drain(timeout=10.0)
 
 
-# Swagger/ReDoc désactivés en production
 app = FastAPI(
     title=settings.app_name,
     description="API de detection de fraude temps reel — Cote d'Ivoire & Senegal",
@@ -106,30 +104,25 @@ async def custom_swagger_ui() -> HTMLResponse:
 @app.get("/health", tags=["system"])
 @app.get("/health/live", tags=["system"])
 def liveness() -> dict:
-    """Liveness probe — le processus est vivant."""
     return {"status": "ok", "version": "1.0.0"}
 
 
 @app.get("/health/ready", tags=["system"])
 def readiness(db: Session = Depends(get_db)) -> JSONResponse:
-    """Readiness probe — vérifie DB, Redis et Keycloak."""
     checks: dict[str, str] = {}
 
-    # Base de données
     try:
         db.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception as exc:
         checks["database"] = f"error: {exc}"
 
-    # Redis
     try:
         get_redis().ping()
         checks["redis"] = "ok"
     except Exception as exc:
         checks["redis"] = f"error: {exc}"
 
-    # Keycloak (OIDC discovery endpoint — léger)
     try:
         kc_url = (
             f"{settings.keycloak_url}/realms/{settings.keycloak_realm}"
@@ -149,13 +142,13 @@ def readiness(db: Session = Depends(get_db)) -> JSONResponse:
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-app.include_router(fraud_api.router,      prefix="/api/v1", tags=["scoring"])
-app.include_router(tenants_api.router,    prefix="/api/v1", tags=["tenants"])
-app.include_router(hooks_api.router,      prefix="/api/v1", tags=["hooks"])
-app.include_router(auth_api.router,       prefix="/api/v1", tags=["auth"])
-app.include_router(model_api.router,      prefix="/api/v1", tags=["model"])
-app.include_router(compliance_api.router, prefix="/api/v1", tags=["compliance"])
-app.include_router(export_api.router,     prefix="/api/v1", tags=["export"])
-app.include_router(events_api.router,     prefix="/api/v1", tags=["events"])
-app.include_router(users_api.router,      prefix="/api/v1", tags=["users"])
+app.include_router(fraud_api.router,       prefix="/api/v1", tags=["scoring"])
+app.include_router(tenants_api.router,     prefix="/api/v1", tags=["tenants"])
+app.include_router(hooks_api.router,       prefix="/api/v1", tags=["hooks"])
+app.include_router(auth_api.router,        prefix="/api/v1", tags=["auth"])
+app.include_router(model_api.router,       prefix="/api/v1", tags=["model"])
+app.include_router(compliance_api.router,  prefix="/api/v1", tags=["compliance"])
+app.include_router(export_api.router,      prefix="/api/v1", tags=["export"])
+app.include_router(events_api.router,      prefix="/api/v1", tags=["events"])
+app.include_router(users_api.router,       prefix="/api/v1", tags=["users"])
 app.include_router(permissions_api.router, prefix="/api/v1", tags=["permissions"])
