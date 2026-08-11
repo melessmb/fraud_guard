@@ -52,8 +52,8 @@ export default function LoginPage() {
       const rawRoles = ((payload as any).realm_access?.roles ?? []) as string[];
       const roles = rawRoles.filter((r): r is UserRole => DASHBOARD_ROLES.has(r as UserRole));
 
-      // This space is for FraudGuard staff only — block portal-only roles
-      const hasDashboardRole = roles.some((r) => ["admin", "tenant_admin", "compliance"].includes(r));
+      // This space is for FraudGuard staff only — tenant_admin belongs in the portal
+      const hasDashboardRole = roles.some((r) => ["admin", "compliance"].includes(r));
       if (!hasDashboardRole) {
         setError("Cet espace est réservé à l'équipe FraudGuard. Utilisez l'espace client →");
         return;
