@@ -58,6 +58,11 @@ if not settings.debug:
             "CORS_ORIGINS='*' interdit en production. "
             "Définissez CORS_ORIGINS avec les domaines autorisés."
         )
+    if settings.keycloak_admin_password in ("admin", "password", ""):
+        raise RuntimeError(
+            "KEYCLOAK_ADMIN_PASSWORD est un mot de passe par défaut non sécurisé en production. "
+            "Définissez KEYCLOAK_ADMIN_PASSWORD dans les variables d'environnement."
+        )
     if not settings.keycloak_client_id:
         warnings.warn(
             "KEYCLOAK_CLIENT_ID non configuré : la vérification d'audience JWT est désactivée. "

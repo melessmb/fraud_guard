@@ -37,6 +37,10 @@ export function middleware(request: NextRequest) {
   const isPortalRoute    = pathname.startsWith("/portal");
   const isDashboardLogin = pathname === "/login";
 
+  // Only allow relative paths as callbackUrl — prevents open redirect attacks.
+  const safeCallback = (p: string) =>
+    p.startsWith("/") && !p.startsWith("//") ? p : null;
+
   // ── Portal routes (/portal/*) ────────────────────────────────────────────
   if (isPortalRoute) {
     if (isPortalLogin) {
@@ -47,7 +51,8 @@ export function middleware(request: NextRequest) {
     // Unauthenticated portal user → portal login
     if (!portalToken) {
       const url = new URL("/portal/login", request.url);
-      if (pathname !== "/portal") url.searchParams.set("callbackUrl", pathname);
+      const cb = safeCallback(pathname);
+      if (cb && cb !== "/portal") url.searchParams.set("callbackUrl", cb);
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
@@ -61,7 +66,8 @@ export function middleware(request: NextRequest) {
 
   if (!dashboardToken) {
     const url = new URL("/login", request.url);
-    if (pathname !== "/") url.searchParams.set("callbackUrl", pathname);
+    const cb = safeCallback(pathname);
+    if (cb && cb !== "/") url.searchParams.set("callbackUrl", cb);
     return NextResponse.redirect(url);
   }
 

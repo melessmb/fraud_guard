@@ -87,6 +87,7 @@ def is_blacklisted(jti: str) -> bool:
     try:
         return get_redis().exists(f"blacklist:{jti}") > 0
     except Exception:
-        # Fail-secure : si Redis est indisponible, on bloque par prudence
-        log.warning("Redis indisponible — is_blacklisted fail-secure pour JTI %s", jti)
-        return False
+        # Fail-secure : si Redis est indisponible, on rejette le token par précaution.
+        # Un token révoqué vaut mieux qu'une session compromise.
+        log.error("Redis indisponible — REJET du token par précaution (fail-secure) JTI=%s", jti)
+        return True

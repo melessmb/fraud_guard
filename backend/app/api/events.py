@@ -7,8 +7,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
+from app.core.auth import _resolve_tenant
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.keycloak_auth import _get_jwks
 from app.core.pubsub import subscribe_tenant
 
@@ -90,6 +93,7 @@ async def _sse_generator(tenant_id: int):
 async def sse_stream(
     token: str = Query(..., description="Bearer JWT (EventSource ne supporte pas les headers)"),
     tenant_id: int = Query(..., description="ID du tenant à surveiller"),
+    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
     Flux SSE d'alertes fraude temps réel.
@@ -104,12 +108,13 @@ async def sse_stream(
     """
     payload = _decode_token_from_query(token)
 
-    # Vérification que le tenant demandé appartient à l'utilisateur
-    # (admins peuvent surveiller n'importe quel tenant)
+    # Vérification que le tenant demandé appartient à l'utilisateur via DB
+    # (résolution identique aux autres endpoints — pas de claim JWT non standard)
     roles: list[str] = payload.get("realm_access", {}).get("roles", [])
-    user_tenant = payload.get("tenant_id")
     if "admin" not in roles and "compliance" not in roles:
-        if user_tenant is None or int(user_tenant) != tenant_id:
+        keycloak_id: str = payload.get("sub", "")
+        resolved = _resolve_tenant(keycloak_id, db)
+        if resolved is None or resolved.id != tenant_id:
             raise HTTPException(status_code=403, detail="Accès interdit à ce tenant")
 
     return StreamingResponse(

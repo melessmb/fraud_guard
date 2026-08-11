@@ -30,6 +30,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set("fg_portal_token", "", { maxAge: 0, path: "/" });
+  response.cookies.set("fg_portal_token", "", { maxAge: 0, path: "/", httpOnly: true, secure: true, sameSite: "lax" });
   return response;
 }

@@ -137,6 +137,11 @@ class WebhookConfig(BaseModel):
     events: List[str] = ["fraud_detected"]
     secret: Optional[str] = None
 
+    @field_validator("url")
+    @classmethod
+    def url_no_ssrf(cls, v: str) -> str:
+        return _validate_hook_url(v)
+
 
 class BatchEventRequest(BaseModel):
     events: List[FraudEvent]
