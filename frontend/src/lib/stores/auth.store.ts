@@ -25,10 +25,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      // Synchronous init — token available immediately on page reload, no race condition
-      token: typeof window !== "undefined"
-        ? sessionStorage.getItem("fg_token_session")
-        : null,
+      token: null,
       isAuthenticated: false,
 
       setUser: (user, token) => {
@@ -64,6 +61,13 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => () => {
+        // Restore token from sessionStorage after localStorage rehydration.
+        // Called in a useEffect (post-hydration) — safe to setState directly.
+        if (typeof window === "undefined") return;
+        const stored = sessionStorage.getItem("fg_token_session");
+        if (stored) useAuthStore.setState({ token: stored });
+      },
     }
   )
 );

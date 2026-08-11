@@ -26,13 +26,8 @@ export const usePortalAuthStore = create<PortalAuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      // Synchronous init — tokens available immediately on page reload, no race condition
-      token: typeof window !== "undefined"
-        ? sessionStorage.getItem("fg_portal_session")
-        : null,
-      refreshToken: typeof window !== "undefined"
-        ? sessionStorage.getItem("fg_portal_refresh")
-        : null,
+      token: null,
+      refreshToken: null,
       isAuthenticated: false,
 
       setUser: (user, token, refreshToken) => {
@@ -70,6 +65,12 @@ export const usePortalAuthStore = create<PortalAuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => () => {
+        if (typeof window === "undefined") return;
+        const token = sessionStorage.getItem("fg_portal_session");
+        const refreshToken = sessionStorage.getItem("fg_portal_refresh");
+        if (token) usePortalAuthStore.setState({ token, refreshToken: refreshToken ?? null });
+      },
     }
   )
 );
